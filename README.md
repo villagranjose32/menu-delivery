@@ -41,6 +41,17 @@ docker run --rm -p 3000:3000 \
 
 En producción configurá `ADMIN_EMAIL` y `ADMIN_PASSWORD` como secretos del servicio. Montá un volumen persistente en `/app/data`; allí se almacenan cuentas, menús, sesiones e imágenes.
 
+### Railway
+
+Railway detecta el `Dockerfile` automáticamente. Después de crear el servicio:
+
+1. Agregá un Railway Volume desde el panel del servicio.
+2. Configurá `/app/data` como ruta de montaje.
+3. Agregá `ADMIN_EMAIL` y `ADMIN_PASSWORD` en Variables.
+4. Generá el dominio público desde Networking.
+
+El volumen se configura únicamente desde Railway; no se declara con la instrucción `VOLUME` del Dockerfile.
+
 ## Publicar en GitHub
 
 El archivo `.env` y la carpeta `data/` están excluidos del repositorio. Para subir una rama ya preparada:
