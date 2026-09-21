@@ -1,0 +1,16 @@
+{
+  "name": "menu-delivery",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Menús digitales para locales gastronómicos con pedidos por WhatsApp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/villagranjose32/menu-delivery.git"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --test"
+  },
+  "engines": {"node": ">=20"}
+}
