@@ -27,9 +27,9 @@ test('registro, aprobación, menú público e imagen', async () => {
     const image = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]).toString('base64');
     r = await request('/api/upload', 'POST', { image }, owner); assert.equal(r.status, 201);
     const img = r.data.url;
-    const menu = { nombre: 'La Esquina', tel: '5491112345678', cats: [{ id: 'cat1', nombre: 'Comidas', img: '', productos: [{ id: 'prod1', nombre: 'Pizza', precio: 1200, detalle: '', hay: true, img }] }] };
+    const menu = { nombre: 'La Esquina', tel: '5491112345678', coord: '-27.7951, -64.2615', costoEnvio: 1000, costoEnvioKm: 500, cats: [{ id: 'cat1', nombre: 'Comidas', img: '', productos: [{ id: 'prod1', nombre: 'Pizza', precio: 1200, detalle: '', hay: true, img }] }] };
     assert.equal((await request('/api/my-menu', 'PUT', menu, owner)).status, 200);
-    r = await request('/api/menu?slug=la-esquina'); assert.equal(r.data.menu.cats[0].productos[0].img, img);
+    r = await request('/api/menu?slug=la-esquina'); assert.equal(r.data.menu.cats[0].productos[0].img, img); assert.equal(r.data.menu.costoEnvioKm, 500);
     const imageResponse = await fetch(base + img); assert.equal(imageResponse.status, 200);
     assert.equal((await request('/api/admin/accounts', 'GET', undefined, owner)).status, 403);
   } finally { processServer.kill(); fs.rmSync(dir, { recursive: true, force: true }); }

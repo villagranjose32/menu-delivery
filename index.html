@@ -130,6 +130,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 .portada h1{font-size:clamp(2rem,9vw,3.1rem);font-weight:800}
 .portada p{margin:10px 0 0;color:var(--ink-soft);max-width:60ch}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.mapa-local{width:100%;height:260px;border:1px solid var(--line);border-radius:12px;margin-top:18px;background:var(--surface)}
 .chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);font-size:.87rem;text-decoration:none;color:inherit;font-weight:500}
 .chip:hover{border-color:var(--ink)}
 
@@ -253,11 +254,12 @@ textarea.entrada{min-height:66px;resize:vertical}
         <label class="campo"><span>Frase corta (opcional)</span><input class="entrada" id="f_lema" placeholder="Empanadas y pizzas a la parrilla. Todos los días de 19 a 00."></label>
         <div class="fila">
           <label class="campo"><span>Dirección del local</span><input class="entrada" id="f_dir" placeholder="Av. Belgrano 1240, Santiago del Estero"></label>
-          <label class="campo"><span>Coordenadas para el mapa (opcional)</span><input class="entrada" id="f_coord" placeholder="-27.7951, -64.2615"></label>
+          <label class="campo"><span>Coordenadas del local para mapa y envíos</span><input class="entrada" id="f_coord" placeholder="-27.7951, -64.2615"></label>
         </div>
         <div class="fila">
           <label class="campo"><span>Símbolo de moneda</span><input class="entrada" id="f_moneda" placeholder="$"></label>
-          <label class="campo"><span>Costo de envío</span><input class="entrada" id="f_envio" inputmode="decimal" placeholder="0"></label>
+          <label class="campo"><span>Costo base/mínimo de envío</span><input class="entrada" id="f_envio" inputmode="decimal" placeholder="1000"></label>
+          <label class="campo"><span>Costo por kilómetro</span><input class="entrada" id="f_envioKm" inputmode="decimal" placeholder="500"></label>
         </div>
         <label class="check"><input type="checkbox" id="f_haceEnvio"> Hago envíos a domicilio</label><br>
         <label class="check" style="margin-top:8px"><input type="checkbox" id="f_haceRetiro"> Los clientes pueden retirar por el local</label>
@@ -313,6 +315,7 @@ textarea.entrada{min-height:66px;resize:vertical}
       <span class="chip oculto" id="c_envio"></span>
       <button class="chip" id="c_tema" type="button">Cambiar tema</button>
     </div>
+    <iframe id="c_mapaEmbed" class="mapa-local oculto" title="Ubicación del local" loading="lazy" referrerpolicy="no-referrer"></iframe>
   </header>
 
   <main class="envoltorio" id="c_menu" style="padding-bottom:150px"></main>
@@ -353,6 +356,13 @@ textarea.entrada{min-height:66px;resize:vertical}
       <label class="campo"><span>Dirección de entrega</span><input class="entrada" id="p_dir" placeholder="Calle, número, barrio"></label>
       <p class="error" id="e_dir">Necesitamos la dirección para llevarte el pedido.</p>
       <label class="campo"><span>Referencia o piso/depto (opcional)</span><input class="entrada" id="p_ref" placeholder="Casa con portón verde, entre Rivadavia y Mitre"></label>
+      <div id="calculadorEnvio" class="tarjeta" style="margin-bottom:14px">
+        <b>Calcular costo de envío</b>
+        <p class="ayuda" style="margin:4px 0 10px">Usá la ubicación del teléfono, escribí coordenadas o pegá un enlace de Google Maps.</p>
+        <label class="campo"><span>Ubicación de entrega</span><input class="entrada" id="p_coord" placeholder="Coordenadas o enlace de Maps"></label>
+        <div class="fila"><button class="btn btn-chico" id="btnMiUbicacion" type="button">Usar mi ubicación</button><button class="btn btn-chico" id="btnCalcularEnvio" type="button">Calcular envío</button></div>
+        <p id="resultadoEnvio" class="ayuda" style="margin:10px 0 0"></p>
+      </div>
     </div>
 
     <div id="bloqueRetiro" class="aviso oculto">Retirás por <b id="p_dirLocal"></b>.</div>
@@ -364,7 +374,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 
     <label class="campo"><span>Aclaraciones (opcional)</span><textarea class="entrada" id="p_notas" placeholder="Sin cebolla, cortado en 8, tocar timbre..."></textarea></label>
 
-    <button class="btn btn-verde" id="btnEnviarWA" style="width:100%;padding:15px;font-size:1.05rem">Enviar el pedido por WhatsApp</button>
+    <button class="btn btn-verde" id="btnEnviarWA" style="width:100%;padding:15px;font-size:1.05rem">Enviar</button>
     <p class="ayuda" style="text-align:center;margin:10px 0 0;font-size:.8rem;color:var(--ink-soft)">Se abre WhatsApp con el detalle escrito. Vos solo tocás enviar.</p>
   </div>
 </div>
@@ -379,13 +389,14 @@ textarea.entrada{min-height:66px;resize:vertical}
 
 /* ============ estado ============ */
 var CFG = {
-  nombre:"", tel:"", lema:"", dir:"", coord:"", moneda:"$", costoEnvio:0,
+  nombre:"", tel:"", lema:"", dir:"", coord:"", moneda:"$", costoEnvio:0, costoEnvioKm:0,
   haceEnvio:true, haceRetiro:true,
   pagos:["Efectivo","Transferencia"],
   cats:[]
 };
 var carro = {};          // id -> cantidad
 var esCliente = false;
+var ubicacionEntrega = null;
 var usuario = null;
 var guardando = null;
 var cambioVersion = 0;
@@ -596,6 +607,7 @@ function mostrarAdmin(){
   $("#f_coord").value = CFG.coord;
   $("#f_moneda").value = CFG.moneda;
   $("#f_envio").value = CFG.costoEnvio || "";
+  $("#f_envioKm").value = CFG.costoEnvioKm || "";
   $("#f_haceEnvio").checked = !!CFG.haceEnvio;
   $("#f_haceRetiro").checked = !!CFG.haceRetiro;
   $("#f_pagos").value = (CFG.pagos||[]).join("\n");
@@ -612,6 +624,7 @@ function tomarDatos(){
   CFG.coord = $("#f_coord").value.trim();
   CFG.moneda = $("#f_moneda").value.trim() || "$";
   CFG.costoEnvio = num($("#f_envio").value);
+  CFG.costoEnvioKm = num($("#f_envioKm").value);
   CFG.haceEnvio = $("#f_haceEnvio").checked;
   CFG.haceRetiro = $("#f_haceRetiro").checked;
   CFG.pagos = $("#f_pagos").value.split("\n").map(function(s){return s.trim();}).filter(Boolean);
@@ -620,7 +633,7 @@ function tomarDatos(){
   medirLink();
 }
 
-["#f_nombre","#f_tel","#f_lema","#f_dir","#f_coord","#f_moneda","#f_envio","#f_pagos","#f_haceEnvio","#f_haceRetiro"]
+["#f_nombre","#f_tel","#f_lema","#f_dir","#f_coord","#f_moneda","#f_envio","#f_envioKm","#f_pagos","#f_haceEnvio","#f_haceRetiro"]
   .forEach(function(s){ $(s).addEventListener("input", tomarDatos); $(s).addEventListener("change", tomarDatos); });
 
 function pintarCats(){
@@ -821,7 +834,7 @@ $("#btnCargarDemo").addEventListener("click", function(){
   CFG = Object.assign(CFG, {
     nombre:"Rotisería La Esquina", lema:"Comida casera para llevar. Martes a domingo, de 19 a 00.",
     dir:"Av. Belgrano 1240, Santiago del Estero", coord:"-27.7951, -64.2615",
-    moneda:"$", costoEnvio:900, haceEnvio:true, haceRetiro:true,
+    moneda:"$", costoEnvio:1000, costoEnvioKm:500, haceEnvio:true, haceRetiro:true,
     pagos:["Efectivo","Transferencia","Tarjeta de débito"],
     cats:[
       { id:id(), nombre:"Empanadas", productos:[
@@ -870,9 +883,18 @@ function mostrarCliente(){
     mapa.classList.remove("oculto");
   } else { mapa.classList.add("oculto"); }
 
+  var mapaEmbed = $("#c_mapaEmbed");
+  var localCoord = leerCoordenadas(CFG.coord);
+  if (localCoord) {
+    var margen = 0.008;
+    var bbox = [localCoord.lng-margen, localCoord.lat-margen, localCoord.lng+margen, localCoord.lat+margen].join(",");
+    mapaEmbed.src = "https://www.openstreetmap.org/export/embed.html?bbox=" + encodeURIComponent(bbox) + "&marker=" + encodeURIComponent(localCoord.lat + "," + localCoord.lng) + "&layer=mapnik";
+    mapaEmbed.classList.remove("oculto");
+  } else { mapaEmbed.removeAttribute("src"); mapaEmbed.classList.add("oculto"); }
+
   var ch = $("#c_envio");
   if (CFG.haceEnvio) {
-    ch.textContent = CFG.costoEnvio > 0 ? ("🛵 Envío " + plata(CFG.costoEnvio)) : "🛵 Envío sin cargo";
+    ch.textContent = CFG.costoEnvioKm > 0 ? ("🛵 Envío desde " + plata(CFG.costoEnvio)) : (CFG.costoEnvio > 0 ? ("🛵 Envío " + plata(CFG.costoEnvio)) : "🛵 Envío sin cargo");
     ch.classList.remove("oculto");
   } else { ch.classList.add("oculto"); }
 
@@ -1033,6 +1055,9 @@ $("#btnVaciar").addEventListener("click", function(){ carro = {}; pintarMenu(); 
 /* ---- modal ---- */
 function abrirModal(){
   if (!cantidadTotal()) return;
+  ubicacionEntrega = null;
+  $("#p_coord").value = "";
+  $("#resultadoEnvio").textContent = "";
   pintarOpciones();
   pintarResumen();
   $("#telon").classList.add("abierto");
@@ -1088,6 +1113,7 @@ function actualizarEntrega(){
   var e = elegido("entrega");
   var envio = e === "envio";
   $("#bloqueDireccion").classList.toggle("oculto", !envio);
+  $("#calculadorEnvio").classList.toggle("oculto", !envio || !CFG.costoEnvioKm || !leerCoordenadas(CFG.coord));
   $("#bloqueRetiro").classList.toggle("oculto", envio || !CFG.dir);
   $("#p_dirLocal").textContent = CFG.dir || "";
   pintarResumen();
@@ -1097,8 +1123,40 @@ function actualizarPago(){
   $("#bloqueVuelto").classList.toggle("oculto", p.indexOf("efectivo") === -1);
 }
 function costoEnvioActual(){
-  return (elegido("entrega") === "envio") ? (CFG.costoEnvio || 0) : 0;
+  if (elegido("entrega") !== "envio") return 0;
+  if (ubicacionEntrega && CFG.costoEnvioKm > 0) return Math.max(CFG.costoEnvio || 0, Math.ceil(ubicacionEntrega.km * CFG.costoEnvioKm));
+  return CFG.costoEnvio || 0;
 }
+
+function leerCoordenadas(valor){
+  var texto = String(valor || "").trim();
+  try { texto = decodeURIComponent(texto); } catch(e) {}
+  var match = texto.match(/(?:@|[?&](?:q|query)=)?(-?\d{1,2}(?:\.\d+)?)[,;\s]+(-?\d{1,3}(?:\.\d+)?)/);
+  if (!match) return null;
+  var lat = Number(match[1]), lng = Number(match[2]);
+  if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return {lat:lat, lng:lng};
+}
+function distanciaKm(a,b){
+  var r=6371, rad=Math.PI/180;
+  var dLat=(b.lat-a.lat)*rad, dLng=(b.lng-a.lng)*rad;
+  var x=Math.sin(dLat/2)**2 + Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2;
+  return 2*r*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function calcularEnvio(coord){
+  var local = leerCoordenadas(CFG.coord);
+  if (!local || !coord) { toast("Ingresá coordenadas válidas"); return; }
+  ubicacionEntrega = { lat:coord.lat, lng:coord.lng, km:distanciaKm(local,coord) };
+  $("#p_coord").value = coord.lat.toFixed(6) + ", " + coord.lng.toFixed(6);
+  $("#resultadoEnvio").textContent = "Distancia aproximada: " + ubicacionEntrega.km.toFixed(1) + " km · Envío: " + plata(costoEnvioActual());
+  pintarResumen();
+}
+$("#btnCalcularEnvio").addEventListener("click", function(){ calcularEnvio(leerCoordenadas($("#p_coord").value)); });
+$("#btnMiUbicacion").addEventListener("click", function(){
+  if (!navigator.geolocation) { toast("Este dispositivo no permite obtener la ubicación"); return; }
+  var boton=this; boton.disabled=true; boton.textContent="Buscando ubicación…";
+  navigator.geolocation.getCurrentPosition(function(pos){ boton.disabled=false; boton.textContent="Usar mi ubicación"; calcularEnvio({lat:pos.coords.latitude,lng:pos.coords.longitude}); }, function(){ boton.disabled=false; boton.textContent="Usar mi ubicación"; toast("No pudimos obtener tu ubicación. Revisá el permiso del navegador."); }, {enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+});
 function pintarResumen(){
   var cont = $("#resumenPedido");
   cont.innerHTML = "";
@@ -1146,7 +1204,6 @@ $("#btnEnviarWA").addEventListener("click", function(){
   t.push("");
   lineas().forEach(function(l){
     t.push("• " + l.cant + "× " + l.p.nombre + " — " + plata(l.sub));
-    if (l.p.detalle) t.push("   _" + l.p.detalle + "_");
   });
   t.push("");
   t.push("Subtotal: " + plata(subtotal()));
@@ -1157,6 +1214,10 @@ $("#btnEnviarWA").addEventListener("click", function(){
   if (entrega === "envio") {
     t.push("*Entrega:* envío a domicilio");
     t.push("*Dirección:* " + dir);
+    if (ubicacionEntrega) {
+      t.push("*Ubicación:* https://www.google.com/maps?q=" + ubicacionEntrega.lat + "," + ubicacionEntrega.lng);
+      t.push("*Distancia aproximada:* " + ubicacionEntrega.km.toFixed(1) + " km");
+    }
     var ref = $("#p_ref").value.trim();
     if (ref) t.push("*Referencia:* " + ref);
   } else {
