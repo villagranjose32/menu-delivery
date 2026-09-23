@@ -20,6 +20,8 @@ Abrí `http://localhost:3000`. El administrador se crea al primer inicio con esa
 
 Los datos se guardan en `data/db.json` y las imágenes en `data/uploads/`. Hacé copias de seguridad de toda la carpeta `data/`. Para usar la app desde Internet, servila detrás de HTTPS y configurá un volumen persistente para `data/`. El envío de pedidos continúa por WhatsApp; la app no almacena pedidos.
 
+La sección de cadetes permite asignar entregas y compartir un seguimiento público. La ubicación se actualiza mientras el cadete mantiene abierta la página, conserva el permiso de geolocalización y tiene conexión a Internet.
+
 Para cambiar la contraseña del administrador, reiniciá el servidor con un nuevo valor de `ADMIN_PASSWORD`. Las sesiones anteriores del administrador se cerrarán.
 
 ## Pruebas

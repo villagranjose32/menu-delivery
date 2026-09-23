@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
 :root{
   --paper:#FFF9F0; --surface:#FFFFFF; --ink:#23201C; --ink-soft:#6E6156;
@@ -110,7 +111,9 @@ textarea.entrada{min-height:66px;resize:vertical}
 .foto-prev.banner{width:130px;height:48px}
 .foto-acc{display:flex;gap:6px;flex-wrap:wrap}
 .cat-foto{padding:0 12px 12px;border-bottom:1px solid var(--line)}
-.item-foto{width:66px;height:66px;border-radius:10px;object-fit:cover;flex:0 0 auto;border:1px solid var(--line);cursor:zoom-in;background:var(--surface)}
+.item-foto{width:96px;height:96px;border-radius:12px;object-fit:cover;flex:0 0 auto;border:1px solid var(--line);cursor:zoom-in;background:var(--surface);box-shadow:var(--sombra)}
+.item-foto:hover{border-color:var(--tomate);filter:brightness(1.03)}
+@media(max-width:520px){.item-foto{width:84px;height:84px}.item{gap:11px}}
 .cat-banner{width:100%;aspect-ratio:17/6;object-fit:cover;border-radius:12px;display:block;margin:14px 0 2px;border:1px solid var(--line);cursor:zoom-in}
 .lupa{position:fixed;inset:0;z-index:50;background:rgba(18,14,10,.86);display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
 .lupa.abierta{display:flex}
@@ -131,6 +134,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 .portada p{margin:10px 0 0;color:var(--ink-soft);max-width:60ch}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .mapa-local{width:100%;height:260px;border:1px solid var(--line);border-radius:12px;margin-top:18px;background:var(--surface)}
+.mapa-selector{width:100%;height:260px;border:1px solid var(--line);border-radius:10px;margin-top:10px;background:var(--surface)}
 .chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);font-size:.87rem;text-decoration:none;color:inherit;font-weight:500}
 .chip:hover{border-color:var(--ink)}
 
@@ -218,7 +222,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 <div id="vistaAcceso" class="envoltorio panel oculto" style="max-width:520px">
   <h1>Administrar mi menú</h1><p class="ayuda">Ingresá para editar tu local o creá una cuenta para solicitar acceso.</p>
   <form id="formAcceso" class="tarjeta" style="margin-top:20px">
-    <label class="campo oculto" id="campoLocal"><span>Nombre del local</span><input class="entrada" id="a_local" autocomplete="organization"></label>
+    <label class="campo" id="campoLocal"><span>Nombre o alias del local</span><input class="entrada" id="a_local" autocomplete="organization" placeholder="Ej: La Esquina Centro"><small class="ayuda">Es obligatorio para ingresar a un local. El administrador puede dejarlo vacío.</small></label>
     <label class="campo"><span>Email</span><input class="entrada" id="a_email" type="email" required autocomplete="email"></label>
     <label class="campo"><span>Contraseña</span><input class="entrada" id="a_password" type="password" required autocomplete="current-password" minlength="10"></label>
     <p id="a_error" class="error" role="alert"></p>
@@ -228,6 +232,12 @@ textarea.entrada{min-height:66px;resize:vertical}
 </div>
 <div id="vistaPendiente" class="envoltorio panel oculto" style="max-width:560px"><h1>Cuenta pendiente</h1><p>El administrador debe aprobar tu cuenta antes de que puedas crear el menú.</p><button class="btn" id="btnSalirPendiente">Cerrar sesión</button></div>
 <div id="vistaSuperadmin" class="envoltorio panel oculto"><header class="fila" style="align-items:center"><h1>Solicitudes de locales</h1><button class="btn" id="btnSalirAdmin">Cerrar sesión</button></header><div id="listaCuentas" style="margin-top:22px"></div></div>
+<div id="vistaCadete" class="envoltorio panel oculto" style="max-width:680px">
+  <h1>Panel del cadete</h1><p class="ayuda" id="cadeteLocal"></p>
+  <form id="formCadete" class="tarjeta"><label class="campo"><span>Token de ingreso</span><input class="entrada" id="cadeteToken" required autocomplete="one-time-code"></label><p class="error" id="cadeteError"></p><button class="btn btn-fuerte" type="submit">Ingresar y compartir ubicación</button></form>
+  <div id="panelCadete" class="oculto"><div class="aviso" id="estadoUbicacion">Solicitando ubicación…</div><p class="ayuda">Mantené esta página abierta y el permiso de ubicación activo durante el reparto.</p><div id="entregasCadete"></div></div>
+</div>
+<div id="vistaSeguimiento" class="envoltorio panel oculto" style="max-width:760px"><h1>Seguimiento del envío</h1><div class="tarjeta"><h2 id="segLocal"></h2><p id="segEstado"></p><p id="segDireccion" class="ayuda"></p><div id="seguimientoMapa" class="mapa-local"></div><p class="ayuda" id="segActualizado"></p></div></div>
 <!-- ======================= VISTA ADMIN ======================= -->
 <div id="vistaAdmin" class="oculto">
   <header class="barra-sup">
@@ -248,14 +258,17 @@ textarea.entrada{min-height:66px;resize:vertical}
       <p class="ayuda">El número de WhatsApp es a donde llegan los pedidos. Escribilo con código de país, sin espacios ni signos.</p>
       <div class="tarjeta">
         <div class="fila">
-          <label class="campo"><span>Nombre del local</span><input class="entrada" id="f_nombre" placeholder="Rotisería La Esquina"></label>
+          <label class="campo"><span>Nombre o alias del local</span><input class="entrada" id="f_nombre" placeholder="Rotisería La Esquina" readonly><small class="ayuda">Este alias identifica la cuenta y no se puede repetir.</small></label>
           <label class="campo"><span>WhatsApp (ej: 5493855123456)</span><input class="entrada" id="f_tel" inputmode="tel" placeholder="5493855123456"></label>
         </div>
         <label class="campo"><span>Frase corta (opcional)</span><input class="entrada" id="f_lema" placeholder="Empanadas y pizzas a la parrilla. Todos los días de 19 a 00."></label>
         <div class="fila">
           <label class="campo"><span>Dirección del local</span><input class="entrada" id="f_dir" placeholder="Av. Belgrano 1240, Santiago del Estero"></label>
-          <label class="campo"><span>Coordenadas del local para mapa y envíos</span><input class="entrada" id="f_coord" placeholder="-27.7951, -64.2615"></label>
         </div>
+        <input type="hidden" id="f_coord">
+        <div class="fila" style="margin-bottom:10px"><button class="btn btn-chico" id="btnBuscarLocal" type="button">Buscar dirección en el mapa</button><button class="btn btn-chico" id="btnUbicacionLocal" type="button">Usar ubicación del teléfono</button></div>
+        <p class="ayuda" id="estadoMapaLocal" style="margin:0">Buscá la dirección y tocá el mapa para ajustar el punto exacto del local.</p>
+        <div id="adminMapa" class="mapa-selector"></div>
         <div class="fila">
           <label class="campo"><span>Símbolo de moneda</span><input class="entrada" id="f_moneda" placeholder="$"></label>
           <label class="campo"><span>Costo base/mínimo de envío</span><input class="entrada" id="f_envio" inputmode="decimal" placeholder="1000"></label>
@@ -282,6 +295,26 @@ textarea.entrada{min-height:66px;resize:vertical}
     </section>
 
     <section class="bloque">
+      <h2>Cadetes y repartos</h2>
+      <p class="ayuda">Creá accesos para cadetes, asignales entregas y compartí el seguimiento con el cliente.</p>
+      <div class="tarjeta" style="margin-bottom:16px">
+        <h3 style="margin-bottom:12px">Agregar cadete</h3>
+        <div class="fila"><label class="campo"><span>Nombre del cadete</span><input class="entrada" id="cadeteNombre" placeholder="Juan"></label><label class="campo"><span>Token personalizado (opcional)</span><input class="entrada" id="cadeteTokenNuevo" placeholder="Se genera automáticamente"></label></div>
+        <button class="btn btn-fuerte" id="btnCrearCadete">Crear acceso</button>
+        <div id="cadeteCredencial" class="aviso oculto" style="margin-top:12px"></div>
+      </div>
+      <div class="tarjeta" style="margin-bottom:16px">
+        <h3 style="margin-bottom:12px">Asignar entrega</h3>
+        <label class="campo"><span>Cadete</span><select class="entrada" id="repartoCadete"></select></label>
+        <label class="campo"><span>Dirección de entrega</span><input class="entrada" id="repartoDireccion" placeholder="Calle, número, localidad"></label>
+        <label class="campo"><span>Cliente o referencia (opcional)</span><input class="entrada" id="repartoCliente" placeholder="María, pedido #24"></label>
+        <button class="btn btn-verde" id="btnAsignarEntrega">Asignar al cadete</button>
+      </div>
+      <div id="listaRepartos"></div>
+      <div id="repartoMapa" class="mapa-local oculto"></div>
+    </section>
+
+    <section class="bloque">
       <h2>Compartir el menú</h2>
       <p class="ayuda">Este link abre solamente el menú: el cliente no ve este panel. El enlace se mantiene actualizado automáticamente.</p>
       <div class="tarjeta">
@@ -292,6 +325,7 @@ textarea.entrada{min-height:66px;resize:vertical}
           <button class="btn" id="btnCompartirWA">Enviar por WhatsApp</button>
         </div>
         <div id="qr"></div>
+        <button class="btn btn-verde btn-chico" id="btnDescargarCartel" style="margin-top:12px">Descargar cartel con QR</button>
         <p class="ayuda" id="pesoLink"></p>
         <p class="ayuda" style="margin:16px 0 0">El menú y las imágenes se guardan en el servidor. También podés descargar una copia de respaldo:</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -315,7 +349,7 @@ textarea.entrada{min-height:66px;resize:vertical}
       <span class="chip oculto" id="c_envio"></span>
       <button class="chip" id="c_tema" type="button">Cambiar tema</button>
     </div>
-    <iframe id="c_mapaEmbed" class="mapa-local oculto" title="Ubicación del local" loading="lazy" referrerpolicy="no-referrer"></iframe>
+    <div id="c_mapaEmbed" class="mapa-local oculto" aria-label="Ubicación del local"></div>
   </header>
 
   <main class="envoltorio" id="c_menu" style="padding-bottom:150px"></main>
@@ -358,9 +392,10 @@ textarea.entrada{min-height:66px;resize:vertical}
       <label class="campo"><span>Referencia o piso/depto (opcional)</span><input class="entrada" id="p_ref" placeholder="Casa con portón verde, entre Rivadavia y Mitre"></label>
       <div id="calculadorEnvio" class="tarjeta" style="margin-bottom:14px">
         <b>Calcular costo de envío</b>
-        <p class="ayuda" style="margin:4px 0 10px">Usá la ubicación del teléfono, escribí coordenadas o pegá un enlace de Google Maps.</p>
-        <label class="campo"><span>Ubicación de entrega</span><input class="entrada" id="p_coord" placeholder="Coordenadas o enlace de Maps"></label>
-        <div class="fila"><button class="btn btn-chico" id="btnMiUbicacion" type="button">Usar mi ubicación</button><button class="btn btn-chico" id="btnCalcularEnvio" type="button">Calcular envío</button></div>
+        <p class="ayuda" style="margin:4px 0 10px">Buscá la dirección escrita arriba, usá la ubicación del teléfono o tocá el mapa para indicar el punto exacto.</p>
+        <input type="hidden" id="p_coord">
+        <div class="fila"><button class="btn btn-chico" id="btnBuscarEntrega" type="button">Buscar dirección</button><button class="btn btn-chico" id="btnMiUbicacion" type="button">Usar mi ubicación</button></div>
+        <div id="clienteMapa" class="mapa-selector"></div>
         <p id="resultadoEnvio" class="ayuda" style="margin:10px 0 0"></p>
       </div>
     </div>
@@ -384,6 +419,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 <div class="aviso-copiado" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 "use strict";
 
@@ -397,18 +433,24 @@ var CFG = {
 var carro = {};          // id -> cantidad
 var esCliente = false;
 var ubicacionEntrega = null;
+var mapas = {};
+var marcadores = {};
 var usuario = null;
 var guardando = null;
 var cambioVersion = 0;
 var colaGuardado = Promise.resolve();
 var vistaRegistro = false;
+var cadeteSesion = "";
+var cadeteSlug = "";
+var relojCadete = null, relojRepartos = null, relojSeguimiento = null, watchCadete = null, ultimaUbicacionEnviada = 0;
+var capaReparto = null;
 async function api(url, options){
   var response = await fetch(url, { credentials:"same-origin", headers:{ "Content-Type":"application/json" }, ...options });
   var data = await response.json();
   if (!response.ok) throw new Error(data.error || "No se pudo completar la operación.");
   return data;
 }
-function ocultarVistas(){ ["#vistaAcceso","#vistaPendiente","#vistaSuperadmin","#vistaAdmin","#vistaCliente"].forEach(function(s){ $(s).classList.add("oculto"); }); }
+function ocultarVistas(){ ["#vistaAcceso","#vistaPendiente","#vistaSuperadmin","#vistaAdmin","#vistaCliente","#vistaCadete","#vistaSeguimiento"].forEach(function(s){ $(s).classList.add("oculto"); }); }
 function linkMenu(){ return location.origin + location.pathname + "?menu=" + encodeURIComponent(usuario.slug); }
 function guardarLocal(){
   if (!usuario || usuario.role !== "owner" || usuario.status !== "approved") return;
@@ -536,7 +578,10 @@ function alternarTema(){
 
 /* ============ arranque ============ */
 async function arrancar(){
-  var slug = new URLSearchParams(location.search).get("menu");
+  var params=new URLSearchParams(location.search), seguimiento=params.get("seguimiento"), accesoCadete=params.get("cadete");
+  if(seguimiento){ ocultarVistas(); $("#vistaSeguimiento").classList.remove("oculto"); await cargarSeguimiento(seguimiento); relojSeguimiento=setInterval(function(){cargarSeguimiento(seguimiento);},5000); return; }
+  if(accesoCadete){ cadeteSlug=accesoCadete; ocultarVistas(); $("#vistaCadete").classList.remove("oculto"); iniciarAccesoCadete(); return; }
+  var slug = params.get("menu");
   if (slug) {
     try { CFG = Object.assign(CFG, (await api("/api/menu?slug=" + encodeURIComponent(slug))).menu); esCliente = true; mostrarCliente(); }
     catch(e){ ocultarVistas(); $("#vistaAcceso").classList.remove("oculto"); toast(e.message); }
@@ -584,14 +629,14 @@ async function cargarCuentas(){
   });
 }
 function botonCuenta(label,id,action){ var b=document.createElement("button"); b.className="btn btn-chico"; b.textContent=label; b.style.marginRight="8px"; b.onclick=async function(){ try{ await api("/api/admin/accounts/"+id+"/"+action,{method:"POST"}); await cargarCuentas(); }catch(e){toast(e.message);} }; return b; }
-$("#a_toggle").onclick=function(){ vistaRegistro=!vistaRegistro; $("#campoLocal").classList.toggle("oculto",!vistaRegistro); $("#a_local").required=vistaRegistro; $("#a_submit").textContent=vistaRegistro?"Solicitar cuenta":"Ingresar"; this.textContent=vistaRegistro?"Ya tengo cuenta":"Crear cuenta para mi local"; $("#a_error").style.display="none"; };
+$("#a_toggle").onclick=function(){ vistaRegistro=!vistaRegistro; $("#a_local").required=vistaRegistro; $("#a_submit").textContent=vistaRegistro?"Solicitar cuenta":"Ingresar"; this.textContent=vistaRegistro?"Ya tengo cuenta":"Crear cuenta para mi local"; $("#a_error").style.display="none"; };
 $("#formAcceso").onsubmit=async function(e){ e.preventDefault(); try{
   var payload={email:$("#a_email").value,password:$("#a_password").value,businessName:$("#a_local").value};
   var result=await api(vistaRegistro?"/api/register":"/api/login",{method:"POST",body:JSON.stringify(payload)});
   if(vistaRegistro){ toast(result.message); $("#a_toggle").click(); $("#a_password").value=""; }
   else { usuario=result.user; await mostrarSesion(); }
 }catch(err){ $("#a_error").textContent=err.message; $("#a_error").style.display="block"; } };
-async function salir(){ await api("/api/logout",{method:"POST"}); usuario=null; location.href=location.pathname; }
+async function salir(){ clearInterval(relojRepartos); await api("/api/logout",{method:"POST"}); usuario=null; location.href=location.pathname; }
 ["#btnSalirLocal","#btnSalirPendiente","#btnSalirAdmin"].forEach(function(s){ $(s).onclick=salir; });
 
 /* ======================================================
@@ -613,8 +658,77 @@ function mostrarAdmin(){
   $("#f_pagos").value = (CFG.pagos||[]).join("\n");
   pintarCats();
   medirLink();
+  setTimeout(iniciarMapaAdmin, 0);
+  cargarRepartos(); clearInterval(relojRepartos); relojRepartos=setInterval(cargarRepartos,5000);
   window.scrollTo(0,0);
 }
+
+function crearMapa(nombre, centro, zoom, alTocar){
+  if (typeof L === "undefined") return null;
+  var mapa = mapas[nombre];
+  if (!mapa) {
+    mapa = L.map(nombre);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(mapa);
+    if (alTocar) mapa.on("click", function(e){ alTocar({lat:e.latlng.lat,lng:e.latlng.lng}); });
+    mapas[nombre] = mapa;
+  }
+  mapa.setView([centro.lat,centro.lng],zoom);
+  setTimeout(function(){ mapa.invalidateSize(); }, 0);
+  return mapa;
+}
+function marcar(nombre, coord, texto){
+  var mapa=mapas[nombre]; if(!mapa) return;
+  if(marcadores[nombre]) marcadores[nombre].setLatLng([coord.lat,coord.lng]);
+  else marcadores[nombre]=L.marker([coord.lat,coord.lng]).addTo(mapa);
+  if(texto) marcadores[nombre].bindPopup(texto).openPopup();
+}
+async function buscarDireccion(texto){
+  if (!String(texto||"").trim()) throw new Error("Escribí una calle, número y localidad.");
+  var r=await api("/api/geocode?q="+encodeURIComponent(texto.trim()));
+  return {lat:Number(r.lat),lng:Number(r.lng),nombre:r.displayName};
+}
+function iniciarMapaAdmin(){
+  var coord=leerCoordenadas(CFG.coord), centro=coord||{lat:-34.6037,lng:-58.3816};
+  crearMapa("adminMapa",centro,coord?16:5,function(p){ seleccionarLocal(p,"Punto elegido en el mapa"); });
+  if(coord) marcar("adminMapa",coord,"Ubicación del local");
+}
+function seleccionarLocal(coord,mensaje){
+  CFG.coord=coord.lat.toFixed(6)+", "+coord.lng.toFixed(6); $("#f_coord").value=CFG.coord;
+  marcar("adminMapa",coord,"Ubicación del local"); mapas.adminMapa.setView([coord.lat,coord.lng],17); guardarLocal();
+  $("#estadoMapaLocal").textContent=mensaje||"Ubicación guardada.";
+}
+$("#btnBuscarLocal").addEventListener("click",async function(){ var b=this; try{ b.disabled=true; b.textContent="Buscando…"; var p=await buscarDireccion($("#f_dir").value); seleccionarLocal(p,"Encontramos: "+p.nombre+". Tocá el mapa si necesitás ajustar el punto."); }catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Buscar dirección en el mapa";} });
+$("#btnUbicacionLocal").addEventListener("click",function(){ obtenerUbicacion(this,function(p){seleccionarLocal(p,"Ubicación del teléfono guardada para el local.");}); });
+
+function estadoReparto(v){return {pending:"Pendiente",active:"En recorrido",finished:"Finalizado"}[v]||v;}
+function copiarTexto(txt){if(navigator.clipboard)navigator.clipboard.writeText(txt).then(function(){toast("Link copiado");});else{var t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();toast("Link copiado");}}
+async function cargarRepartos(){
+  if(!usuario||usuario.role!=="owner"||usuario.status!=="approved")return;
+  try{
+    var data=await api("/api/couriers"), select=$("#repartoCadete"), elegidoAntes=select.value;select.replaceChildren();
+    data.couriers.forEach(function(c){var o=document.createElement("option");o.value=c.id;o.textContent=c.name+" · "+(c.status==="online"?"En línea":"Sin conexión");select.appendChild(o);});if(elegidoAntes)select.value=elegidoAntes;
+    var lista=$("#listaRepartos");lista.replaceChildren();
+    if(!data.couriers.length){var vacio=document.createElement("p");vacio.className="vacio";vacio.textContent="Todavía no agregaste cadetes.";lista.appendChild(vacio);return;}
+    data.couriers.forEach(function(c){
+      var card=document.createElement("div");card.className="tarjeta";card.style.marginBottom="12px";var h=document.createElement("h3");h.textContent=c.name;var est=document.createElement("p");est.className="ayuda";est.textContent=(c.status==="online"?"Ubicación compartida":"Sin conexión")+(c.updatedAt?" · actualización "+new Date(c.updatedAt).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}):"");card.append(h,est);
+      var enlace=document.createElement("button");enlace.className="btn btn-chico";enlace.textContent="Copiar acceso del cadete";enlace.onclick=function(){copiarTexto(location.origin+location.pathname+"?cadete="+encodeURIComponent(usuario.slug));};card.appendChild(enlace);
+      data.deliveries.filter(function(d){return d.courierId===c.id;}).sort(function(a,b){return b.createdAt-a.createdAt;}).forEach(function(d){var f=document.createElement("div");f.style.cssText="border-top:1px solid var(--line);padding-top:10px;margin-top:10px";var p=document.createElement("p");p.style.margin="0 0 8px";p.textContent=estadoReparto(d.status)+" · "+d.address+(d.customer?" · "+d.customer:"");var ver=document.createElement("button");ver.className="btn btn-chico";ver.textContent="Ver recorrido";ver.onclick=function(){mostrarRecorrido(d,c);};var compartir=document.createElement("button");compartir.className="btn btn-chico";compartir.style.marginLeft="6px";compartir.textContent="Compartir seguimiento";compartir.onclick=function(){copiarTexto(location.origin+location.pathname+"?seguimiento="+d.trackingId);};f.append(p,ver,compartir);card.appendChild(f);});lista.appendChild(card);
+    });
+  }catch(e){console.error(e);}
+}
+$("#btnCrearCadete").addEventListener("click",async function(){try{var r=await api("/api/couriers",{method:"POST",body:JSON.stringify({name:$("#cadeteNombre").value,token:$("#cadeteTokenNuevo").value})});var caja=$("#cadeteCredencial");caja.replaceChildren();var t=document.createElement("p");t.textContent="Token de "+r.courier.name+": "+r.token;var b=document.createElement("button");b.className="btn btn-chico";b.textContent="Copiar acceso y token";b.onclick=function(){copiarTexto("Acceso: "+location.origin+location.pathname+"?cadete="+usuario.slug+"\nToken: "+r.token);};caja.append(t,b);caja.classList.remove("oculto");$("#cadeteNombre").value="";$("#cadeteTokenNuevo").value="";await cargarRepartos();}catch(e){toast(e.message);}});
+$("#btnAsignarEntrega").addEventListener("click",async function(){var b=this;try{if(!$("#repartoCadete").value)throw new Error("Primero agregá un cadete.");b.disabled=true;b.textContent="Buscando dirección…";var coord=await buscarDireccion($("#repartoDireccion").value);await api("/api/deliveries",{method:"POST",body:JSON.stringify({courierId:$("#repartoCadete").value,address:$("#repartoDireccion").value,customer:$("#repartoCliente").value,coord:coord})});$("#repartoDireccion").value="";$("#repartoCliente").value="";toast("Entrega asignada");await cargarRepartos();}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Asignar al cadete";}});
+function mostrarRecorrido(d,c){var centro=c.lastLocation||d.coord,mapa=crearMapa("repartoMapa",centro,14);$("#repartoMapa").classList.remove("oculto");mapa.invalidateSize();if(capaReparto)capaReparto.remove();capaReparto=L.layerGroup().addTo(mapa);var puntos=[];L.marker([d.coord.lat,d.coord.lng]).bindPopup("Entrega: "+d.address).addTo(capaReparto);puntos.push([d.coord.lat,d.coord.lng]);if(c.lastLocation){L.circleMarker([c.lastLocation.lat,c.lastLocation.lng],{radius:10,color:"#1e5e4a",fillOpacity:1}).bindPopup(c.name).addTo(capaReparto);puntos.push([c.lastLocation.lat,c.lastLocation.lng]);}if(puntos.length>1){L.polyline(puntos,{color:"#d93a22",dashArray:"7 7"}).addTo(capaReparto);mapa.fitBounds(puntos,{padding:[35,35]});}else mapa.setView(puntos[0],16);$("#repartoMapa").scrollIntoView({behavior:"smooth",block:"center"});}
+
+async function cadeteApi(url,options){options=options||{};var response=await fetch(url,{...options,headers:{"Content-Type":"application/json","X-Courier-Session":cadeteSesion,...(options.headers||{})}}),data=await response.json();if(!response.ok)throw new Error(data.error||"No se pudo completar la operación.");return data;}
+function iniciarAccesoCadete(){cadeteSesion=sessionStorage.getItem("menuwa.cadete."+cadeteSlug)||"";if(cadeteSesion)cadeteApi("/api/courier-deliveries").then(activarPanelCadete).catch(function(){cadeteSesion="";sessionStorage.removeItem("menuwa.cadete."+cadeteSlug);});}
+$("#formCadete").addEventListener("submit",async function(e){e.preventDefault();try{var r=await api("/api/courier-login",{method:"POST",body:JSON.stringify({slug:cadeteSlug,token:$("#cadeteToken").value})});cadeteSesion=r.session;sessionStorage.setItem("menuwa.cadete."+cadeteSlug,cadeteSesion);$("#cadeteLocal").textContent=r.local;activarPanelCadete(r);}catch(err){$("#cadeteError").textContent=err.message;$("#cadeteError").style.display="block";}});
+function activarPanelCadete(data){$("#formCadete").classList.add("oculto");$("#panelCadete").classList.remove("oculto");pintarEntregasCadete(data.deliveries||[]);iniciarUbicacionCadete();clearInterval(relojCadete);relojCadete=setInterval(actualizarCadete,5000);}
+async function actualizarCadete(){try{var r=await cadeteApi("/api/courier-deliveries");pintarEntregasCadete(r.deliveries);}catch(e){$("#estadoUbicacion").textContent=e.message;}}
+function iniciarUbicacionCadete(){if(watchCadete!==null||!navigator.geolocation){$("#estadoUbicacion").textContent=navigator.geolocation?"Ubicación compartida en tiempo real.":"Este teléfono no permite compartir ubicación.";return;}watchCadete=navigator.geolocation.watchPosition(function(pos){$("#estadoUbicacion").textContent="Ubicación compartida · "+new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});if(Date.now()-ultimaUbicacionEnviada<4000)return;ultimaUbicacionEnviada=Date.now();cadeteApi("/api/courier-location",{method:"POST",body:JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude})}).catch(function(e){$("#estadoUbicacion").textContent=e.message;});},function(){ $("#estadoUbicacion").textContent="Permití el acceso a la ubicación para compartir el recorrido.";},{enableHighAccuracy:true,maximumAge:3000,timeout:15000});}
+function pintarEntregasCadete(entregas){var caja=$("#entregasCadete");caja.replaceChildren();if(!entregas.length){caja.textContent="No tenés entregas pendientes.";return;}entregas.forEach(function(d){var card=document.createElement("div");card.className="tarjeta";card.style.marginBottom="12px";var h=document.createElement("h3");h.textContent=d.customer||"Entrega";var p=document.createElement("p");p.textContent=d.address;var a=document.createElement("a");a.className="btn btn-chico";a.target="_blank";a.rel="noopener";a.href="https://www.google.com/maps/dir/?api=1&destination="+d.coord.lat+","+d.coord.lng;a.textContent="Abrir en Maps";var b=document.createElement("button");b.className="btn "+(d.status==="active"?"btn-fuerte":"btn-verde");b.style.marginLeft="8px";b.textContent=d.status==="active"?"Finalizar recorrido":"Iniciar recorrido";b.onclick=async function(){try{await cadeteApi("/api/courier-deliveries/"+d.id+"/"+(d.status==="active"?"finish":"start"),{method:"POST",body:"{}"});await actualizarCadete();}catch(e){toast(e.message);}};card.append(h,p,a,b);caja.appendChild(card);});}
+var capaSeguimiento=null;
+async function cargarSeguimiento(id){try{var r=await api("/api/tracking?id="+encodeURIComponent(id)),d=r.delivery,c=r.courier;$("#segLocal").textContent=r.local;$("#segEstado").textContent="Estado: "+estadoReparto(d.status);$("#segDireccion").textContent="Destino: "+d.address;var centro=c&&c.lastLocation?c.lastLocation:d.coord,mapa=crearMapa("seguimientoMapa",centro,15);if(capaSeguimiento)capaSeguimiento.remove();capaSeguimiento=L.layerGroup().addTo(mapa);var puntos=[[d.coord.lat,d.coord.lng]];L.marker(puntos[0]).bindPopup("Destino").addTo(capaSeguimiento);if(c&&c.lastLocation){var actual=[c.lastLocation.lat,c.lastLocation.lng];puntos.push(actual);L.circleMarker(actual,{radius:10,color:"#1e5e4a",fillOpacity:1}).bindPopup("Cadete").addTo(capaSeguimiento);L.polyline(puntos,{color:"#d93a22",dashArray:"7 7"}).addTo(capaSeguimiento);mapa.fitBounds(puntos,{padding:[35,35]});}$("#segActualizado").textContent=c&&c.updatedAt?"Última ubicación: "+new Date(c.updatedAt).toLocaleString("es-AR"):"Esperando la ubicación del cadete.";if(d.status==="finished")clearInterval(relojSeguimiento);}catch(e){$("#segEstado").textContent=e.message;}}
 
 function tomarDatos(){
   CFG.nombre = $("#f_nombre").value.trim();
@@ -804,6 +918,44 @@ function pintarQR(url){
   }
 }
 
+function textoEnLineas(ctx,texto,x,y,maxAncho,alto){
+  var palabras=String(texto||"").split(/\s+/), linea="", lineas=[];
+  palabras.forEach(function(p){ var prueba=linea?linea+" "+p:p; if(ctx.measureText(prueba).width>maxAncho&&linea){lineas.push(linea);linea=p;}else linea=prueba; });
+  if(linea) lineas.push(linea);
+  lineas.forEach(function(l){ctx.fillText(l,x,y);y+=alto;}); return y;
+}
+function crearQrGrande(url){
+  return new Promise(function(resolve,reject){
+    if(typeof QRCode==="undefined") return reject(new Error("No se pudo cargar el generador QR"));
+    var caja=document.createElement("div"); caja.style.position="fixed"; caja.style.left="-9999px"; document.body.appendChild(caja);
+    try { new QRCode(caja,{text:url,width:600,height:600,correctLevel:QRCode.CorrectLevel.H}); }
+    catch(e){caja.remove();return reject(e);}
+    setTimeout(function(){
+      var canvas=caja.querySelector("canvas"), img=caja.querySelector("img");
+      if(canvas){var copia=document.createElement("canvas");copia.width=600;copia.height=600;copia.getContext("2d").drawImage(canvas,0,0,600,600);caja.remove();resolve(copia);}
+      else if(img){var copia=document.createElement("canvas");copia.width=600;copia.height=600;var listo=function(){copia.getContext("2d").drawImage(img,0,0,600,600);caja.remove();resolve(copia);};if(img.complete)listo();else img.onload=listo;}
+      else {caja.remove();reject(new Error("No se pudo crear el QR"));}
+    },80);
+  });
+}
+$("#btnDescargarCartel").addEventListener("click",async function(){
+  var boton=this; try{
+    tomarDatos();
+    if(!CFG.nombre||!CFG.dir){toast("Completá el nombre y la dirección del local");return;}
+    if(!CFG.tel){toast("Falta el número de WhatsApp");return;}
+    boton.disabled=true;boton.textContent="Preparando cartel…";await guardarAhora();
+    var url=armarLink(), qr=await crearQrGrande(url), canvas=document.createElement("canvas"); canvas.width=900;canvas.height=1250;
+    var ctx=canvas.getContext("2d");ctx.fillStyle="#fff9f0";ctx.fillRect(0,0,900,1250);ctx.textAlign="center";ctx.fillStyle="#23201c";
+    ctx.font="800 62px Archivo, Arial, sans-serif";var y=100;y=textoEnLineas(ctx,CFG.nombre,450,y,760,70);
+    if(CFG.lema){ctx.font="500 30px Karla, Arial, sans-serif";ctx.fillStyle="#6e6156";y=textoEnLineas(ctx,CFG.lema,450,y+25,720,38);}
+    ctx.font="700 26px Karla, Arial, sans-serif";ctx.fillStyle="#1e5e4a";y=textoEnLineas(ctx,"📍 "+CFG.dir,450,y+30,720,34);
+    var qrY=Math.max(390,y+30);ctx.fillStyle="#fff";ctx.fillRect(130,qrY-20,640,640);ctx.drawImage(qr,150,qrY,600,600);
+    ctx.fillStyle="#d93a22";ctx.font="800 34px Archivo, Arial, sans-serif";ctx.fillText("ESCANEÁ Y MIRÁ NUESTRO MENÚ",450,qrY+660);
+    ctx.fillStyle="#6e6156";ctx.font="500 23px Karla, Arial, sans-serif";ctx.fillText("Elegí tus productos y enviá el pedido",450,qrY+705);
+    var a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=(usuario.slug||"menu")+"-qr.png";a.click();toast("Cartel descargado");
+  }catch(e){toast(e.message);}finally{boton.disabled=false;boton.textContent="Descargar cartel con QR";}
+});
+
 $("#btnExportar").addEventListener("click", function(){
   tomarDatos();
   var blob = new Blob([JSON.stringify(CFG, null, 2)], {type:"application/json"});
@@ -886,11 +1038,9 @@ function mostrarCliente(){
   var mapaEmbed = $("#c_mapaEmbed");
   var localCoord = leerCoordenadas(CFG.coord);
   if (localCoord) {
-    var margen = 0.008;
-    var bbox = [localCoord.lng-margen, localCoord.lat-margen, localCoord.lng+margen, localCoord.lat+margen].join(",");
-    mapaEmbed.src = "https://www.openstreetmap.org/export/embed.html?bbox=" + encodeURIComponent(bbox) + "&marker=" + encodeURIComponent(localCoord.lat + "," + localCoord.lng) + "&layer=mapnik";
     mapaEmbed.classList.remove("oculto");
-  } else { mapaEmbed.removeAttribute("src"); mapaEmbed.classList.add("oculto"); }
+    setTimeout(function(){ crearMapa("c_mapaEmbed",localCoord,16); marcar("c_mapaEmbed",localCoord,CFG.nombre||"Local"); },0);
+  } else { mapaEmbed.classList.add("oculto"); }
 
   var ch = $("#c_envio");
   if (CFG.haceEnvio) {
@@ -946,7 +1096,9 @@ function pintarMenu(){
       if (p.img) {
         var mini = document.createElement("img");
         mini.className = "item-foto"; mini.src = p.img; mini.alt = p.nombre;
+        mini.title = "Ver foto ampliada"; mini.tabIndex = 0; mini.setAttribute("role","button");
         mini.addEventListener("click", function(){ ampliar(p.img); });
+        mini.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){e.preventDefault();ampliar(p.img);} });
         fila.appendChild(mini);
       }
 
@@ -1062,6 +1214,8 @@ function abrirModal(){
   pintarResumen();
   $("#telon").classList.add("abierto");
   document.body.style.overflow = "hidden";
+  var local=leerCoordenadas(CFG.coord);
+  if(local && CFG.costoEnvioKm>0) setTimeout(function(){ crearMapa("clienteMapa",local,14,function(p){calcularEnvio(p);}); },0);
 }
 function cerrarModal(){
   $("#telon").classList.remove("abierto");
@@ -1145,18 +1299,20 @@ function distanciaKm(a,b){
 }
 function calcularEnvio(coord){
   var local = leerCoordenadas(CFG.coord);
-  if (!local || !coord) { toast("Ingresá coordenadas válidas"); return; }
+  if (!local || !coord) { toast("No pudimos determinar la ubicación"); return; }
   ubicacionEntrega = { lat:coord.lat, lng:coord.lng, km:distanciaKm(local,coord) };
   $("#p_coord").value = coord.lat.toFixed(6) + ", " + coord.lng.toFixed(6);
+  marcar("clienteMapa",coord,"Entrega"); if(mapas.clienteMapa) mapas.clienteMapa.setView([coord.lat,coord.lng],16);
   $("#resultadoEnvio").textContent = "Distancia aproximada: " + ubicacionEntrega.km.toFixed(1) + " km · Envío: " + plata(costoEnvioActual());
   pintarResumen();
 }
-$("#btnCalcularEnvio").addEventListener("click", function(){ calcularEnvio(leerCoordenadas($("#p_coord").value)); });
-$("#btnMiUbicacion").addEventListener("click", function(){
+function obtenerUbicacion(boton, listo){
   if (!navigator.geolocation) { toast("Este dispositivo no permite obtener la ubicación"); return; }
-  var boton=this; boton.disabled=true; boton.textContent="Buscando ubicación…";
-  navigator.geolocation.getCurrentPosition(function(pos){ boton.disabled=false; boton.textContent="Usar mi ubicación"; calcularEnvio({lat:pos.coords.latitude,lng:pos.coords.longitude}); }, function(){ boton.disabled=false; boton.textContent="Usar mi ubicación"; toast("No pudimos obtener tu ubicación. Revisá el permiso del navegador."); }, {enableHighAccuracy:true,timeout:12000,maximumAge:60000});
-});
+  var texto=boton.textContent; boton.disabled=true; boton.textContent="Buscando ubicación…";
+  navigator.geolocation.getCurrentPosition(function(pos){ boton.disabled=false; boton.textContent=texto; listo({lat:pos.coords.latitude,lng:pos.coords.longitude}); }, function(){ boton.disabled=false; boton.textContent=texto; toast("No pudimos obtener tu ubicación. Revisá el permiso del navegador."); }, {enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+}
+$("#btnMiUbicacion").addEventListener("click", function(){ obtenerUbicacion(this,calcularEnvio); });
+$("#btnBuscarEntrega").addEventListener("click", async function(){ var b=this; try{b.disabled=true;b.textContent="Buscando…";calcularEnvio(await buscarDireccion($("#p_dir").value));}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Buscar dirección";} });
 function pintarResumen(){
   var cont = $("#resumenPedido");
   cont.innerHTML = "";
@@ -1191,6 +1347,7 @@ $("#btnEnviarWA").addEventListener("click", function(){
   $("#e_dir").style.display = "none";
   if (!nombre) { $("#e_nombre").style.display = "block"; $("#p_nombre").focus(); ok = false; }
   if (entrega === "envio" && !dir) { $("#e_dir").style.display = "block"; if (ok) $("#p_dir").focus(); ok = false; }
+  if (entrega === "envio" && CFG.costoEnvioKm > 0 && leerCoordenadas(CFG.coord) && !ubicacionEntrega) { toast("Buscá o marcá la ubicación de entrega para calcular el envío"); if (ok) $("#p_dir").focus(); ok = false; }
   if (!ok) return;
 
   if (!CFG.tel) { alert("Este menú no tiene cargado el número de WhatsApp del local."); return; }
