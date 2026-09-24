@@ -22,7 +22,7 @@
   color-scheme:light dark;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
+  :root:not([data-theme="light"]):not([data-theme="white"]){
     --paper:#191613; --surface:#221E1A; --ink:#F4EBE0; --ink-soft:#A99C8E;
     --line:#332C25; --line-strong:#4A4036;
     --tomate:#F1573C; --tomate-ink:#1B0F0C;
@@ -36,6 +36,14 @@
   --tomate:#F1573C; --tomate-ink:#1B0F0C;
   --verde:#5FBF9B; --verde-soft:#14291F;
   --sombra:none;
+}
+:root[data-theme="white"]{
+  --paper:#FFFFFF; --surface:#FFFFFF; --ink:#23201C; --ink-soft:#6E6156;
+  --line:#E6E6E6; --line-strong:#CFCFCF;
+  --tomate:#D93A22; --tomate-ink:#FFF3EE;
+  --verde:#1E5E4A; --verde-soft:#E3F0EA;
+  --sombra:0 1px 0 rgba(35,32,28,.04);
+  color-scheme:light;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px)}
@@ -259,7 +267,7 @@ textarea.entrada{min-height:66px;resize:vertical}
       <div class="tarjeta">
         <div class="fila">
           <label class="campo"><span>Nombre o alias del local</span><input class="entrada" id="f_nombre" placeholder="Rotisería La Esquina" readonly><small class="ayuda">Este alias identifica la cuenta y no se puede repetir.</small></label>
-          <label class="campo"><span>WhatsApp (ej: 5493855123456)</span><input class="entrada" id="f_tel" inputmode="tel" placeholder="5493855123456"></label>
+          <label class="campo"><span>WhatsApp (ej: 5493855123456)</span><input class="entrada" id="f_tel" inputmode="numeric" maxlength="15" placeholder="5493855123456"><small class="ayuda" id="errTel" style="color:var(--tomate);display:none">Número inválido: usá solo dígitos, con código de país, entre 8 y 15 dígitos (sin 0 inicial). No se guardará hasta corregirlo.</small></label>
         </div>
         <label class="campo"><span>Frase corta (opcional)</span><input class="entrada" id="f_lema" placeholder="Empanadas y pizzas a la parrilla. Todos los días de 19 a 00."></label>
         <div class="fila">
@@ -570,7 +578,7 @@ function alternarTema(){
     var oscuroSistema = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     actual = oscuroSistema ? "dark" : "light";
   }
-  var nuevo = actual === "dark" ? "light" : "dark";
+  var nuevo = actual === "light" ? "dark" : actual === "dark" ? "white" : "light";
   document.documentElement.setAttribute("data-theme", nuevo);
   try { localStorage.setItem("menuwa.tema", nuevo); } catch(e){}
 }
@@ -732,7 +740,11 @@ async function cargarSeguimiento(id){try{var r=await api("/api/tracking?id="+enc
 
 function tomarDatos(){
   CFG.nombre = $("#f_nombre").value.trim();
-  CFG.tel = $("#f_tel").value.replace(/[^0-9]/g,"");
+  var campoTel = $("#f_tel"), soloDigitos = campoTel.value.replace(/[^0-9]/g,"");
+  if (campoTel.value !== soloDigitos) campoTel.value = soloDigitos;
+  var telValido = soloDigitos === "" || /^[1-9][0-9]{7,14}$/.test(soloDigitos);
+  $("#errTel").style.display = telValido ? "none" : "block";
+  if (telValido) CFG.tel = soloDigitos;
   CFG.lema = $("#f_lema").value.trim();
   CFG.dir = $("#f_dir").value.trim();
   CFG.coord = $("#f_coord").value.trim();
