@@ -433,6 +433,7 @@ var CFG = {
 var carro = {};          // id -> cantidad
 var esCliente = false;
 var ubicacionEntrega = null;
+var calculoRutaVersion = 0;
 var mapas = {};
 var marcadores = {};
 var usuario = null;
@@ -1297,13 +1298,19 @@ function distanciaKm(a,b){
   var x=Math.sin(dLat/2)**2 + Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2;
   return 2*r*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function calcularEnvio(coord){
+async function calcularEnvio(coord){
   var local = leerCoordenadas(CFG.coord);
   if (!local || !coord) { toast("No pudimos determinar la ubicación"); return; }
-  ubicacionEntrega = { lat:coord.lat, lng:coord.lng, km:distanciaKm(local,coord) };
+  var version=++calculoRutaVersion;
+  ubicacionEntrega = { lat:coord.lat, lng:coord.lng, km:distanciaKm(local,coord), tipo:"calculando" };
   $("#p_coord").value = coord.lat.toFixed(6) + ", " + coord.lng.toFixed(6);
   marcar("clienteMapa",coord,"Entrega"); if(mapas.clienteMapa) mapas.clienteMapa.setView([coord.lat,coord.lng],16);
-  $("#resultadoEnvio").textContent = "Distancia aproximada: " + ubicacionEntrega.km.toFixed(1) + " km · Envío: " + plata(costoEnvioActual());
+  $("#resultadoEnvio").textContent = "Calculando recorrido por calles…";
+  try{
+    var ruta=await api("/api/route-distance?from="+encodeURIComponent(local.lat+","+local.lng)+"&to="+encodeURIComponent(coord.lat+","+coord.lng));if(version!==calculoRutaVersion)return;
+    ubicacionEntrega.km=ruta.distanceKm;ubicacionEntrega.tipo="calles";ubicacionEntrega.minutos=ruta.durationMinutes;
+    $("#resultadoEnvio").textContent="Recorrido por calles: "+ruta.distanceKm.toFixed(1)+" km · "+ruta.durationMinutes+" min aprox. · Envío: "+plata(costoEnvioActual());
+  }catch(e){if(version!==calculoRutaVersion)return;ubicacionEntrega.tipo="linea";$("#resultadoEnvio").textContent="No se pudo calcular la ruta por calles. Distancia en línea recta: "+ubicacionEntrega.km.toFixed(1)+" km · Envío estimado: "+plata(costoEnvioActual());toast(e.message);}
   pintarResumen();
 }
 function obtenerUbicacion(boton, listo){
@@ -1348,6 +1355,7 @@ $("#btnEnviarWA").addEventListener("click", function(){
   if (!nombre) { $("#e_nombre").style.display = "block"; $("#p_nombre").focus(); ok = false; }
   if (entrega === "envio" && !dir) { $("#e_dir").style.display = "block"; if (ok) $("#p_dir").focus(); ok = false; }
   if (entrega === "envio" && CFG.costoEnvioKm > 0 && leerCoordenadas(CFG.coord) && !ubicacionEntrega) { toast("Buscá o marcá la ubicación de entrega para calcular el envío"); if (ok) $("#p_dir").focus(); ok = false; }
+  if (entrega === "envio" && ubicacionEntrega && ubicacionEntrega.tipo === "calculando") { toast("Esperá a que termine el cálculo del recorrido"); ok = false; }
   if (!ok) return;
 
   if (!CFG.tel) { alert("Este menú no tiene cargado el número de WhatsApp del local."); return; }
@@ -1373,7 +1381,7 @@ $("#btnEnviarWA").addEventListener("click", function(){
     t.push("*Dirección:* " + dir);
     if (ubicacionEntrega) {
       t.push("*Ubicación:* https://www.google.com/maps?q=" + ubicacionEntrega.lat + "," + ubicacionEntrega.lng);
-      t.push("*Distancia aproximada:* " + ubicacionEntrega.km.toFixed(1) + " km");
+      t.push("*Distancia " + (ubicacionEntrega.tipo === "calles" ? "por calles" : "aproximada") + ":* " + ubicacionEntrega.km.toFixed(1) + " km");
     }
     var ref = $("#p_ref").value.trim();
     if (ref) t.push("*Referencia:* " + ref);

@@ -13,14 +13,15 @@ test('registro, aprobación, menú público e imagen', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'menu-test-'));
   const port = await freePort();
   const geocoderPort = await freePort();
-  const geocoder = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify([{ lat: '-27.7951', lon: '-64.2615', display_name: 'Av. Belgrano 1240, Santiago del Estero' }])); });
+  const geocoder = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); if(req.url.startsWith('/route/')) res.end(JSON.stringify({code:'Ok',routes:[{distance:4200,duration:720}]})); else res.end(JSON.stringify([{ lat: '-27.7951', lon: '-64.2615', display_name: 'Av. Belgrano 1240, Santiago del Estero' }])); });
   await new Promise(resolve => geocoder.listen(geocoderPort, '127.0.0.1', resolve));
-  const processServer = spawn(process.execPath, ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, DATA_DIR: dir, PORT: String(port), GEOCODER_URL: `http://127.0.0.1:${geocoderPort}`, ADMIN_EMAIL: 'admin@test.com', ADMIN_PASSWORD: 'admin-secret-123' }, stdio: 'ignore' });
+  const processServer = spawn(process.execPath, ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, DATA_DIR: dir, PORT: String(port), GEOCODER_URL: `http://127.0.0.1:${geocoderPort}`, ROUTING_URL: `http://127.0.0.1:${geocoderPort}`, ADMIN_EMAIL: 'admin@test.com', ADMIN_PASSWORD: 'admin-secret-123' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}`;
   async function request(route, method = 'GET', data, cookie, headers = {}) { const r = await fetch(base + route, { method, headers: { ...(data ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers }, body: data && JSON.stringify(data) }); return { status: r.status, data: await r.json(), cookie: r.headers.get('set-cookie')?.split(';')[0] }; }
   try {
     for (let i = 0; i < 30; i++) { try { await fetch(base); break; } catch { await new Promise(r => setTimeout(r, 50)); } }
     let location = await request('/api/geocode?q=Av.%20Belgrano%201240%2C%20Santiago'); assert.equal(location.status, 200); assert.equal(location.data.lat, -27.7951);
+    let route = await request('/api/route-distance?from=-27.7951,-64.2615&to=-27.81,-64.28'); assert.equal(route.status, 200); assert.equal(route.data.distanceKm, 4.2);
     let r = await request('/api/register', 'POST', { email: 'local@test.com', businessName: 'La Esquina', password: 'owner-secret-123' }); assert.equal(r.status, 201);
     assert.equal((await request('/api/register', 'POST', { email: 'local@test.com', businessName: 'La Esquina Norte', password: 'other-secret-123' })).status, 201);
     assert.equal((await request('/api/register', 'POST', { email: 'otro@test.com', businessName: 'La Esquina', password: 'other-secret-123' })).status, 409);

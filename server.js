@@ -14,8 +14,9 @@ const COOKIE = 'menu_session';
 const loginAttempts = new Map();
 fs.mkdirSync(UPLOADS, { recursive: true });
 let db = fs.existsSync(DB) ? JSON.parse(fs.readFileSync(DB, 'utf8')) : { users: [], menus: {}, sessions: {} };
-db.users ||= []; db.menus ||= {}; db.sessions ||= {}; db.geocode ||= {}; db.couriers ||= []; db.deliveries ||= {}; db.courierSessions ||= {};
+db.users ||= []; db.menus ||= {}; db.sessions ||= {}; db.geocode ||= {}; db.routes ||= {}; db.couriers ||= []; db.deliveries ||= {}; db.courierSessions ||= {};
 let lastGeocodeAt = 0;
+let lastRouteAt = 0;
 function persist() { const tmp = DB + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB); }
 function json(res, status, value, headers = {}) { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers }); res.end(JSON.stringify(value)); }
 function error(res, status, message) { json(res, status, { error: message }); }
@@ -62,6 +63,14 @@ async function handler(req, res) {
       db.geocode[key] = result; persist(); return json(res, 200, result);
     } catch (e) { return error(res, 502, e.name === 'AbortError' ? 'La búsqueda tardó demasiado. Intentá nuevamente.' : e.message); }
     finally { clearTimeout(timer); }
+  }
+  if (method === 'GET' && url.pathname === '/api/route-distance') {
+    const parse = value => { const p=String(value||'').split(',').map(Number); return p.length===2&&isFinite(p[0])&&isFinite(p[1])&&p[0]>=-90&&p[0]<=90&&p[1]>=-180&&p[1]<=180?{lat:p[0],lng:p[1]}:null; };
+    const from=parse(url.searchParams.get('from')),to=parse(url.searchParams.get('to'));if(!from||!to)return error(res,400,'Ubicaciones inválidas.');
+    const key=crypto.createHash('sha256').update(`${from.lat.toFixed(5)},${from.lng.toFixed(5)};${to.lat.toFixed(5)},${to.lng.toFixed(5)}`).digest('hex');if(db.routes[key])return json(res,200,db.routes[key]);
+    if(Date.now()-lastRouteAt<500)return error(res,429,'Esperá un momento antes de calcular otra ruta.');lastRouteAt=Date.now();
+    const base=process.env.ROUTING_URL||'https://router.project-osrm.org';const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+    try{const route=new URL(`/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}`,base);route.searchParams.set('overview','false');route.searchParams.set('alternatives','false');const upstream=await fetch(route,{headers:{'User-Agent':`menu-delivery/1.0 (${process.env.ADMIN_EMAIL||'contacto no configurado'})`,Accept:'application/json'},signal:controller.signal});if(!upstream.ok)throw new Error('El servicio de rutas no respondió.');const data=await upstream.json();if(data.code!=='Ok'||!data.routes?.[0])return error(res,404,'No encontramos un recorrido por calles entre esos puntos.');const result={distanceKm:data.routes[0].distance/1000,durationMinutes:Math.ceil(data.routes[0].duration/60)};db.routes[key]=result;persist();return json(res,200,result);}catch(e){return error(res,502,e.name==='AbortError'?'El cálculo de ruta tardó demasiado.':e.message);}finally{clearTimeout(timer);}
   }
   if (method === 'POST' && url.pathname === '/api/register') {
     const data = await body(req); const email = safeText(data.email, 254).toLowerCase(), name = safeText(data.businessName, 100), password = String(data.password || '');
