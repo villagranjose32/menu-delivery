@@ -98,6 +98,10 @@ textarea.entrada{min-height:66px;resize:vertical}
 .marca{font-family:Archivo;font-weight:800;font-size:1.02rem;letter-spacing:-.03em}
 .marca em{font-style:normal;color:var(--tomate)}
 .panel{padding:26px 0 120px}
+.admin-nav{display:flex;gap:8px;overflow-x:auto;position:sticky;top:58px;z-index:18;background:var(--paper);padding:10px 0 12px;margin-bottom:22px;border-bottom:1px solid var(--line);scrollbar-width:thin;scroll-snap-type:x proximity}
+.admin-nav button{flex:0 0 auto;scroll-snap-align:start;white-space:nowrap;padding:9px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);font-family:Archivo;font-weight:700;font-size:.86rem}
+.admin-nav button.activo{background:var(--tomate);color:var(--tomate-ink);border-color:var(--tomate)}
+.panel-admin-seccion{display:none}.panel-admin-seccion.activa{display:block}
 .bloque{margin-bottom:34px}
 .bloque > h2{font-size:1.32rem;margin-bottom:4px}
 .bloque > .ayuda{color:var(--ink-soft);font-size:.9rem;margin:0 0 16px}
@@ -146,8 +150,8 @@ textarea.entrada{min-height:66px;resize:vertical}
 .portada h1{font-size:clamp(2rem,9vw,3.1rem);font-weight:800}
 .portada p{margin:10px 0 0;color:var(--ink-soft);max-width:60ch}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
-.mapa-local{width:100%;height:260px;border:1px solid var(--line);border-radius:12px;margin-top:18px;background:var(--surface)}
-.mapa-selector{width:100%;height:260px;border:1px solid var(--line);border-radius:10px;margin-top:10px;background:var(--surface)}
+.mapa-local{width:100%;height:260px;border:1px solid var(--line);border-radius:12px;margin-top:18px;background:var(--surface);position:relative;z-index:0}
+.mapa-selector{width:100%;height:260px;border:1px solid var(--line);border-radius:10px;margin-top:10px;background:var(--surface);position:relative;z-index:0}
 .chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);font-size:.87rem;text-decoration:none;color:inherit;font-weight:500}
 .chip:hover{border-color:var(--ink)}
 
@@ -194,10 +198,10 @@ textarea.entrada{min-height:66px;resize:vertical}
 .carro-info small{display:block;color:var(--ink-soft)}
 
 /* ---------- modal ---------- */
-.telon{position:fixed;inset:0;z-index:40;background:rgba(20,16,12,.55);display:none;align-items:flex-end;justify-content:center}
+.telon{position:fixed;inset:0;z-index:3000;background:rgba(20,16,12,.55);display:none;align-items:flex-end;justify-content:center}
 .telon.abierto{display:flex}
 .modal{
-  background:var(--paper);width:100%;max-width:560px;max-height:92vh;overflow:auto;
+  position:relative;z-index:1;background:var(--paper);width:100%;max-width:560px;max-height:92vh;overflow:auto;
   border-radius:16px 16px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom,0px));
   border:1px solid var(--line-strong);
 }
@@ -226,7 +230,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 .pie{padding:40px 0 30px;color:var(--ink-soft);font-size:.82rem;text-align:center}
 .oculto{display:none!important}
 .aviso-copiado{
-  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:5000;
   background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;
   font-size:.88rem;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s
 }
@@ -269,7 +273,15 @@ textarea.entrada{min-height:66px;resize:vertical}
 
   <main class="envoltorio panel">
 
-    <section class="bloque">
+    <nav class="admin-nav" aria-label="Secciones del panel">
+      <button type="button" class="activo" data-panel="panelDatos">Datos del local</button>
+      <button type="button" data-panel="panelPagos">Formas de pago</button>
+      <button type="button" data-panel="panelCadetes">Cadetes</button>
+      <button type="button" data-panel="panelMenu">Menú</button>
+      <button type="button" data-panel="panelQR">Código QR</button>
+    </nav>
+
+    <section class="bloque panel-admin-seccion activa" id="panelDatos">
       <h2>Datos del local</h2>
       <p class="ayuda">El número de WhatsApp es a donde llegan los pedidos. Escribilo con código de país, sin espacios ni signos.</p>
       <div class="tarjeta">
@@ -295,7 +307,7 @@ textarea.entrada{min-height:66px;resize:vertical}
       </div>
     </section>
 
-    <section class="bloque">
+    <section class="bloque panel-admin-seccion" id="panelPagos">
       <h2>Formas de pago</h2>
       <p class="ayuda">Una por línea. El cliente elige una al cerrar el pedido.</p>
       <div class="tarjeta">
@@ -303,14 +315,14 @@ textarea.entrada{min-height:66px;resize:vertical}
       </div>
     </section>
 
-    <section class="bloque">
+    <section class="bloque panel-admin-seccion" id="panelMenu">
       <h2>Menú</h2>
       <p class="ayuda">Creá las categorías que quieras y cargá los productos adentro de cada una.</p>
       <div id="listaCats"></div>
       <button class="btn" id="btnAddCat">+ Agregar categoría</button>
     </section>
 
-    <section class="bloque">
+    <section class="bloque panel-admin-seccion" id="panelCadetes">
       <h2>Cadetes y repartos</h2>
       <p class="ayuda">Creá accesos para cadetes, asignales entregas y compartí el seguimiento con el cliente.</p>
       <div class="tarjeta" style="margin-bottom:16px">
@@ -330,7 +342,7 @@ textarea.entrada{min-height:66px;resize:vertical}
       <div id="repartoMapa" class="mapa-local oculto"></div>
     </section>
 
-    <section class="bloque">
+    <section class="bloque panel-admin-seccion" id="panelQR">
       <h2>Compartir el menú</h2>
       <p class="ayuda">Este link abre solamente el menú: el cliente no ve este panel. El enlace se mantiene actualizado automáticamente.</p>
       <div class="tarjeta">
@@ -461,6 +473,7 @@ var cadeteSlug = "";
 var relojCadete = null, relojRepartos = null, relojSeguimiento = null, watchCadete = null, ultimaUbicacionEnviada = 0;
 var capaReparto = null;
 var esperaSugerencias = null, versionSugerencias = 0;
+var panelAdminActivo = "panelDatos";
 async function api(url, options){
   var response = await fetch(url, { credentials:"same-origin", headers:{ "Content-Type":"application/json" }, ...options });
   var data = await response.json();
@@ -677,8 +690,17 @@ function mostrarAdmin(){
   medirLink();
   setTimeout(iniciarMapaAdmin, 0);
   cargarRepartos(); clearInterval(relojRepartos); relojRepartos=setInterval(cargarRepartos,5000);
+  activarPanelAdmin(panelAdminActivo);
   window.scrollTo(0,0);
 }
+
+function activarPanelAdmin(idPanel){
+  panelAdminActivo=idPanel;
+  $$(".panel-admin-seccion").forEach(function(s){s.classList.toggle("activa",s.id===idPanel);});
+  $$(".admin-nav button").forEach(function(b){var activo=b.dataset.panel===idPanel;b.classList.toggle("activo",activo);b.setAttribute("aria-pressed",activo?"true":"false");});
+  setTimeout(function(){if(idPanel==="panelDatos"&&mapas.adminMapa)mapas.adminMapa.invalidateSize();if(idPanel==="panelCadetes"&&mapas.repartoMapa)mapas.repartoMapa.invalidateSize();},0);
+}
+$$('.admin-nav button').forEach(function(b){b.addEventListener('click',function(){activarPanelAdmin(b.dataset.panel);});});
 
 function crearMapa(nombre, centro, zoom, alTocar){
   if (typeof L === "undefined") return null;
@@ -1397,7 +1419,7 @@ $("#btnEnviarWA").addEventListener("click", function(){
   var pago = elegido("pago") || "A confirmar";
 
   var t = [];
-  t.push("*Pedido nuevo — " + (CFG.nombre || "Menú") + "*");
+  t.push("*" + (CFG.nombre || "Menú") + "*");
   t.push("");
   lineas().forEach(function(l){
     t.push("• " + l.cant + "× " + l.p.nombre + " — " + plata(l.sub));
@@ -1409,7 +1431,6 @@ $("#btnEnviarWA").addEventListener("click", function(){
   t.push("");
   t.push("*Cliente:* " + nombre);
   if (entrega === "envio") {
-    t.push("*Entrega:* envío a domicilio");
     t.push("*Dirección:* " + dir);
     if (ubicacionEntrega) {
       t.push("*Ubicación:* https://www.google.com/maps?q=" + ubicacionEntrega.lat + "," + ubicacionEntrega.lng);
