@@ -13,15 +13,19 @@ test('registro, aprobación, menú público e imagen', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'menu-test-'));
   const port = await freePort();
   const geocoderPort = await freePort();
-  const geocoder = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); if(req.url.startsWith('/route/')) res.end(JSON.stringify({code:'Ok',routes:[{distance:4200,duration:720}]})); else res.end(JSON.stringify([{ lat: '-27.7951', lon: '-64.2615', display_name: 'Av. Belgrano 1240, Santiago del Estero' }])); });
+  let lastGeocodeRequest = '', lastAutocompleteRequest = '';
+  const geocoder = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); if(req.url.startsWith('/route/')) res.end(JSON.stringify({code:'Ok',routes:[{distance:4200,duration:720}]})); else if(req.url.startsWith('/v1/geocode/autocomplete')) { lastAutocompleteRequest=req.url;res.end(JSON.stringify({results:[{formatted:'Av. Roca 100, Santiago del Estero',lat:-27.8,lon:-64.27}]})); } else if(req.url.startsWith('/reverse')) res.end(JSON.stringify({display_name:'Av. Roca 100, Santiago del Estero',lat:'-27.8',lon:'-64.27'})); else { lastGeocodeRequest=req.url; res.end(JSON.stringify([{ lat: '-27.7951', lon: '-64.2615', display_name: 'Av. Belgrano 1240, Santiago del Estero', address:{country_code:'ar',state:'Santiago del Estero'} }])); } });
   await new Promise(resolve => geocoder.listen(geocoderPort, '127.0.0.1', resolve));
-  const processServer = spawn(process.execPath, ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, DATA_DIR: dir, PORT: String(port), GEOCODER_URL: `http://127.0.0.1:${geocoderPort}`, ROUTING_URL: `http://127.0.0.1:${geocoderPort}`, ADMIN_EMAIL: 'admin@test.com', ADMIN_PASSWORD: 'admin-secret-123' }, stdio: 'ignore' });
+  const processServer = spawn(process.execPath, ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, DATA_DIR: dir, PORT: String(port), GEOCODER_URL: `http://127.0.0.1:${geocoderPort}`, ROUTING_URL: `http://127.0.0.1:${geocoderPort}`, GEOAPIFY_URL: `http://127.0.0.1:${geocoderPort}`, GEOAPIFY_API_KEY:'test-key', ADMIN_EMAIL: 'admin@test.com', ADMIN_PASSWORD: 'admin-secret-123' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}`;
   async function request(route, method = 'GET', data, cookie, headers = {}) { const r = await fetch(base + route, { method, headers: { ...(data ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers }, body: data && JSON.stringify(data) }); return { status: r.status, data: await r.json(), cookie: r.headers.get('set-cookie')?.split(';')[0] }; }
   try {
     for (let i = 0; i < 30; i++) { try { await fetch(base); break; } catch { await new Promise(r => setTimeout(r, 50)); } }
-    let location = await request('/api/geocode?q=Av.%20Belgrano%201240%2C%20Santiago'); assert.equal(location.status, 200); assert.equal(location.data.lat, -27.7951);
+    let location = await request('/api/geocode?q=Av.%20Belgrano%201240&context=Mitre%20100%2C%20Santiago%20del%20Estero&near=-27.8%2C-64.26&country=ar'); assert.equal(location.status, 200); assert.equal(location.data.lat, -27.7951); assert.equal(location.data.countryCode, 'ar'); assert.match(lastGeocodeRequest,/countrycodes=ar/); assert.match(lastGeocodeRequest,/bounded=1/);
+    await new Promise(r => setTimeout(r, 1150));
+    let reverse = await request('/api/reverse-geocode?lat=-27.8&lng=-64.27'); assert.equal(reverse.status,200);assert.match(reverse.data.displayName,/Roca/);
     let route = await request('/api/route-distance?from=-27.7951,-64.2615&to=-27.81,-64.28'); assert.equal(route.status, 200); assert.equal(route.data.distanceKm, 4.2);
+    let suggestions = await request('/api/address-suggestions?q=Av.%20Roca&near=-27.8,-64.26'); assert.equal(suggestions.status,200);assert.equal(suggestions.data.suggestions.length,1);assert.match(lastAutocompleteRequest,/25000/);
     let r = await request('/api/register', 'POST', { email: 'local@test.com', businessName: 'La Esquina', password: 'owner-secret-123' }); assert.equal(r.status, 201);
     assert.equal((await request('/api/register', 'POST', { email: 'local@test.com', businessName: 'La Esquina Norte', password: 'other-secret-123' })).status, 201);
     assert.equal((await request('/api/register', 'POST', { email: 'otro@test.com', businessName: 'La Esquina', password: 'other-secret-123' })).status, 409);

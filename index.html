@@ -61,6 +61,10 @@ input,textarea,select{font:inherit;color:inherit}
 
 /* ---------- campos ---------- */
 .campo{display:block;margin-bottom:14px}
+.campo-autocompletar{position:relative}
+.sugerencias{position:absolute;left:0;right:0;top:100%;z-index:35;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;box-shadow:0 8px 24px rgba(35,32,28,.16);overflow:hidden}
+.sugerencias button{display:block;width:100%;padding:10px 12px;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--surface);font:inherit;cursor:pointer}
+.sugerencias button:last-child{border-bottom:0}.sugerencias button:hover,.sugerencias button:focus{background:var(--verde-soft)}
 .campo > span{display:block;font-size:.82rem;color:var(--ink-soft);margin-bottom:5px}
 .entrada{
   width:100%;padding:11px 12px;background:var(--surface);color:var(--ink);
@@ -119,9 +123,10 @@ textarea.entrada{min-height:66px;resize:vertical}
 .foto-prev.banner{width:130px;height:48px}
 .foto-acc{display:flex;gap:6px;flex-wrap:wrap}
 .cat-foto{padding:0 12px 12px;border-bottom:1px solid var(--line)}
-.item-foto{width:96px;height:96px;border-radius:12px;object-fit:cover;flex:0 0 auto;border:1px solid var(--line);cursor:zoom-in;background:var(--surface);box-shadow:var(--sombra)}
+.item-foto,.item-sin-foto{width:100%;height:100%;min-height:155px;max-height:230px;border-radius:12px;object-fit:cover;border:1px solid var(--line);background:var(--surface);box-shadow:var(--sombra)}
+.item-foto{cursor:zoom-in}
+.item-sin-foto{display:flex;align-items:center;justify-content:center;background:var(--verde-soft);color:var(--verde);font-family:Archivo;font-size:2.4rem;font-weight:800}
 .item-foto:hover{border-color:var(--tomate);filter:brightness(1.03)}
-@media(max-width:520px){.item-foto{width:84px;height:84px}.item{gap:11px}}
 .cat-banner{width:100%;aspect-ratio:17/6;object-fit:cover;border-radius:12px;display:block;margin:14px 0 2px;border:1px solid var(--line);cursor:zoom-in}
 .lupa{position:fixed;inset:0;z-index:50;background:rgba(18,14,10,.86);display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
 .lupa.abierta{display:flex}
@@ -146,16 +151,18 @@ textarea.entrada{min-height:66px;resize:vertical}
 .chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);font-size:.87rem;text-decoration:none;color:inherit;font-weight:500}
 .chip:hover{border-color:var(--ink)}
 
-.cat-titulo{
-  position:sticky;top:0;z-index:10;background:var(--paper);
-  padding:22px 0 8px;font-size:1.05rem;font-weight:800;
-  border-bottom:1px solid var(--line);margin-bottom:2px;
-}
-.item{display:flex;gap:14px;align-items:flex-start;padding:15px 0;border-bottom:1px solid var(--line)}
-.item-txt{flex:1;min-width:0}
+.carrusel-cats{display:flex;gap:10px;overflow-x:auto;padding:14px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin;position:sticky;top:0;z-index:10;background:var(--paper);border-bottom:1px solid var(--line)}
+.cat-opcion{flex:0 0 92px;scroll-snap-align:start;border:1px solid var(--line);border-radius:12px;padding:7px;background:var(--surface);text-align:center;font-family:Archivo;font-weight:700;font-size:.78rem;line-height:1.15}
+.cat-opcion img,.cat-opcion .cat-icono{display:block;width:76px;height:70px;object-fit:cover;border-radius:8px;margin:0 auto 6px;background:var(--verde-soft)}
+.cat-opcion .cat-icono{display:flex;align-items:center;justify-content:center;font-size:1.55rem;color:var(--verde)}
+.cat-opcion.activa{border:2px solid var(--tomate);padding:6px;color:var(--tomate)}
+.cat-titulo{padding:24px 0 10px;font-size:1.35rem;font-weight:800;border-bottom:2px solid var(--ink);margin-bottom:12px}
+.item{display:grid;grid-template-columns:minmax(140px,46%) minmax(0,54%);gap:14px;padding:14px 0;border-bottom:1px solid var(--line);min-height:170px}
+.item-contenido{min-width:0;display:flex;flex-direction:column;padding:3px 0}
+.item-txt{min-width:0}
 .item-nom{font-family:Archivo;font-weight:600;font-size:1.05rem}
 .item-det{color:var(--ink-soft);font-size:.9rem;margin-top:3px}
-.item-der{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.item-der{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px}
 .precio{font-family:Archivo;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .agotado{color:var(--ink-soft);font-size:.82rem;font-style:italic}
 .stepper{display:flex;align-items:center;gap:2px;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
@@ -172,6 +179,7 @@ textarea.entrada{min-height:66px;resize:vertical}
 .casilla-prod.marcada .tilde::after{opacity:1}
 .casilla-prod input:focus-visible ~ .tilde{outline:2.5px solid var(--tomate);outline-offset:3px}
 .item-der .stepper{margin-top:2px}
+@media(max-width:420px){.item{grid-template-columns:minmax(125px,45%) minmax(0,55%);gap:10px}.item-nom{font-size:.98rem}.item-det{font-size:.82rem}.precio{font-size:.92rem}.cat-opcion{flex-basis:86px}.cat-opcion img,.cat-opcion .cat-icono{width:70px;height:64px}}
 
 .barra-carro{
   position:fixed;left:0;right:0;bottom:0;z-index:30;
@@ -395,12 +403,10 @@ textarea.entrada{min-height:66px;resize:vertical}
     </div>
 
     <div id="bloqueDireccion" class="oculto">
-      <label class="campo"><span>Dirección de entrega</span><input class="entrada" id="p_dir" placeholder="Calle, número, barrio"></label>
+      <label class="campo campo-autocompletar"><span>Dirección de entrega</span><input class="entrada" id="p_dir" placeholder="Calle, número, barrio" autocomplete="off"><div id="sugerenciasEntrega" class="sugerencias oculto"></div></label>
       <p class="error" id="e_dir">Necesitamos la dirección para llevarte el pedido.</p>
       <label class="campo"><span>Referencia o piso/depto (opcional)</span><input class="entrada" id="p_ref" placeholder="Casa con portón verde, entre Rivadavia y Mitre"></label>
       <div id="calculadorEnvio" class="tarjeta" style="margin-bottom:14px">
-        <b>Calcular costo de envío</b>
-        <p class="ayuda" style="margin:4px 0 10px">Buscá la dirección escrita arriba, usá la ubicación del teléfono o tocá el mapa para indicar el punto exacto.</p>
         <input type="hidden" id="p_coord">
         <div class="fila"><button class="btn btn-chico" id="btnBuscarEntrega" type="button">Buscar dirección</button><button class="btn btn-chico" id="btnMiUbicacion" type="button">Usar mi ubicación</button></div>
         <div id="clienteMapa" class="mapa-selector"></div>
@@ -433,12 +439,13 @@ textarea.entrada{min-height:66px;resize:vertical}
 
 /* ============ estado ============ */
 var CFG = {
-  nombre:"", tel:"", lema:"", dir:"", coord:"", moneda:"$", costoEnvio:0, costoEnvioKm:0,
+  nombre:"", tel:"", lema:"", dir:"", coord:"", geoPais:"", geoProvincia:"", moneda:"$", costoEnvio:0, costoEnvioKm:0,
   haceEnvio:true, haceRetiro:true,
   pagos:["Efectivo","Transferencia"],
   cats:[]
 };
 var carro = {};          // id -> cantidad
+var categoriaActivaId = "";
 var esCliente = false;
 var ubicacionEntrega = null;
 var calculoRutaVersion = 0;
@@ -453,6 +460,7 @@ var cadeteSesion = "";
 var cadeteSlug = "";
 var relojCadete = null, relojRepartos = null, relojSeguimiento = null, watchCadete = null, ultimaUbicacionEnviada = 0;
 var capaReparto = null;
+var esperaSugerencias = null, versionSugerencias = 0;
 async function api(url, options){
   var response = await fetch(url, { credentials:"same-origin", headers:{ "Content-Type":"application/json" }, ...options });
   var data = await response.json();
@@ -691,10 +699,14 @@ function marcar(nombre, coord, texto){
   else marcadores[nombre]=L.marker([coord.lat,coord.lng]).addTo(mapa);
   if(texto) marcadores[nombre].bindPopup(texto).openPopup();
 }
-async function buscarDireccion(texto){
+async function buscarDireccion(texto,opciones){
   if (!String(texto||"").trim()) throw new Error("Escribí una calle, número y localidad.");
-  var r=await api("/api/geocode?q="+encodeURIComponent(texto.trim()));
-  return {lat:Number(r.lat),lng:Number(r.lng),nombre:r.displayName};
+  opciones=opciones||{};var params=new URLSearchParams({q:texto.trim()});
+  if(opciones.contexto)params.set("context",opciones.contexto);
+  if(opciones.cerca)params.set("near",opciones.cerca.lat+","+opciones.cerca.lng);
+  if(opciones.pais)params.set("country",opciones.pais);
+  var r=await api("/api/geocode?"+params.toString());
+  return {lat:Number(r.lat),lng:Number(r.lng),nombre:r.displayName,countryCode:r.countryCode||"",state:r.state||""};
 }
 function iniciarMapaAdmin(){
   var coord=leerCoordenadas(CFG.coord), centro=coord||{lat:-34.6037,lng:-58.3816};
@@ -703,6 +715,8 @@ function iniciarMapaAdmin(){
 }
 function seleccionarLocal(coord,mensaje){
   CFG.coord=coord.lat.toFixed(6)+", "+coord.lng.toFixed(6); $("#f_coord").value=CFG.coord;
+  if(coord.countryCode)CFG.geoPais=coord.countryCode;
+  if(coord.state)CFG.geoProvincia=coord.state;
   marcar("adminMapa",coord,"Ubicación del local"); mapas.adminMapa.setView([coord.lat,coord.lng],17); guardarLocal();
   $("#estadoMapaLocal").textContent=mensaje||"Ubicación guardada.";
 }
@@ -721,12 +735,12 @@ async function cargarRepartos(){
     data.couriers.forEach(function(c){
       var card=document.createElement("div");card.className="tarjeta";card.style.marginBottom="12px";var h=document.createElement("h3");h.textContent=c.name;var est=document.createElement("p");est.className="ayuda";est.textContent=(c.status==="online"?"Ubicación compartida":"Sin conexión")+(c.updatedAt?" · actualización "+new Date(c.updatedAt).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}):"");card.append(h,est);
       var enlace=document.createElement("button");enlace.className="btn btn-chico";enlace.textContent="Copiar acceso del cadete";enlace.onclick=function(){copiarTexto(location.origin+location.pathname+"?cadete="+encodeURIComponent(usuario.slug));};card.appendChild(enlace);
-      data.deliveries.filter(function(d){return d.courierId===c.id;}).sort(function(a,b){return b.createdAt-a.createdAt;}).forEach(function(d){var f=document.createElement("div");f.style.cssText="border-top:1px solid var(--line);padding-top:10px;margin-top:10px";var p=document.createElement("p");p.style.margin="0 0 8px";p.textContent=estadoReparto(d.status)+" · "+d.address+(d.customer?" · "+d.customer:"");var ver=document.createElement("button");ver.className="btn btn-chico";ver.textContent="Ver recorrido";ver.onclick=function(){mostrarRecorrido(d,c);};var compartir=document.createElement("button");compartir.className="btn btn-chico";compartir.style.marginLeft="6px";compartir.textContent="Compartir seguimiento";compartir.onclick=function(){copiarTexto(location.origin+location.pathname+"?seguimiento="+d.trackingId);};f.append(p,ver,compartir);card.appendChild(f);});lista.appendChild(card);
+      data.deliveries.filter(function(d){return d.courierId===c.id;}).sort(function(a,b){return b.createdAt-a.createdAt;}).forEach(function(d){var f=document.createElement("div");f.style.cssText="border-top:1px solid var(--line);padding-top:10px;margin-top:10px";var p=document.createElement("p");p.style.margin="0 0 8px";p.textContent=estadoReparto(d.status)+" · "+d.address+(d.customer?" · "+d.customer:"");var ver=document.createElement("button");ver.className="btn btn-chico";ver.textContent="Ver recorrido";ver.onclick=function(){mostrarRecorrido(d,c);};var compartir=document.createElement("button");compartir.className="btn btn-chico";compartir.style.marginLeft="6px";compartir.textContent="Enviar seguimiento por WhatsApp";compartir.onclick=function(){var link=location.origin+location.pathname+"?seguimiento="+d.trackingId;var mensaje="Seguí tu pedido de "+(CFG.nombre||"nuestro local")+" en tiempo real: "+link;window.open("https://wa.me/?text="+encodeURIComponent(mensaje),"_blank");};f.append(p,ver,compartir);card.appendChild(f);});lista.appendChild(card);
     });
   }catch(e){console.error(e);}
 }
 $("#btnCrearCadete").addEventListener("click",async function(){try{var r=await api("/api/couriers",{method:"POST",body:JSON.stringify({name:$("#cadeteNombre").value,token:$("#cadeteTokenNuevo").value})});var caja=$("#cadeteCredencial");caja.replaceChildren();var t=document.createElement("p");t.textContent="Token de "+r.courier.name+": "+r.token;var b=document.createElement("button");b.className="btn btn-chico";b.textContent="Copiar acceso y token";b.onclick=function(){copiarTexto("Acceso: "+location.origin+location.pathname+"?cadete="+usuario.slug+"\nToken: "+r.token);};caja.append(t,b);caja.classList.remove("oculto");$("#cadeteNombre").value="";$("#cadeteTokenNuevo").value="";await cargarRepartos();}catch(e){toast(e.message);}});
-$("#btnAsignarEntrega").addEventListener("click",async function(){var b=this;try{if(!$("#repartoCadete").value)throw new Error("Primero agregá un cadete.");b.disabled=true;b.textContent="Buscando dirección…";var coord=await buscarDireccion($("#repartoDireccion").value);await api("/api/deliveries",{method:"POST",body:JSON.stringify({courierId:$("#repartoCadete").value,address:$("#repartoDireccion").value,customer:$("#repartoCliente").value,coord:coord})});$("#repartoDireccion").value="";$("#repartoCliente").value="";toast("Entrega asignada");await cargarRepartos();}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Asignar al cadete";}});
+$("#btnAsignarEntrega").addEventListener("click",async function(){var b=this;try{if(!$("#repartoCadete").value)throw new Error("Primero agregá un cadete.");b.disabled=true;b.textContent="Buscando dirección…";var coord=await buscarDireccion($("#repartoDireccion").value,{contexto:CFG.dir,cerca:leerCoordenadas(CFG.coord),pais:CFG.geoPais});await api("/api/deliveries",{method:"POST",body:JSON.stringify({courierId:$("#repartoCadete").value,address:$("#repartoDireccion").value,customer:$("#repartoCliente").value,coord:coord})});$("#repartoDireccion").value="";$("#repartoCliente").value="";toast("Entrega asignada");await cargarRepartos();}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Asignar al cadete";}});
 function mostrarRecorrido(d,c){var centro=c.lastLocation||d.coord,mapa=crearMapa("repartoMapa",centro,14);$("#repartoMapa").classList.remove("oculto");mapa.invalidateSize();if(capaReparto)capaReparto.remove();capaReparto=L.layerGroup().addTo(mapa);var puntos=[];L.marker([d.coord.lat,d.coord.lng]).bindPopup("Entrega: "+d.address).addTo(capaReparto);puntos.push([d.coord.lat,d.coord.lng]);if(c.lastLocation){L.circleMarker([c.lastLocation.lat,c.lastLocation.lng],{radius:10,color:"#1e5e4a",fillOpacity:1}).bindPopup(c.name).addTo(capaReparto);puntos.push([c.lastLocation.lat,c.lastLocation.lng]);}if(puntos.length>1){L.polyline(puntos,{color:"#d93a22",dashArray:"7 7"}).addTo(capaReparto);mapa.fitBounds(puntos,{padding:[35,35]});}else mapa.setView(puntos[0],16);$("#repartoMapa").scrollIntoView({behavior:"smooth",block:"center"});}
 
 async function cadeteApi(url,options){options=options||{};var response=await fetch(url,{...options,headers:{"Content-Type":"application/json","X-Courier-Session":cadeteSesion,...(options.headers||{})}}),data=await response.json();if(!response.ok)throw new Error(data.error||"No se pudo completar la operación.");return data;}
@@ -1082,26 +1096,17 @@ function buscarProd(pid){
 function pintarMenu(){
   var cont = $("#c_menu");
   cont.innerHTML = "";
-  var hay = (CFG.cats||[]).some(function(c){ return (c.productos||[]).length; });
-  if (!hay) {
+  var categorias = (CFG.cats||[]).filter(function(c){ return (c.productos||[]).some(function(p){return !!p.nombre;}); });
+  if (!categorias.length) {
     cont.innerHTML = '<p class="vacio" style="padding-top:30px">El menú todavía no tiene productos cargados.</p>';
     return;
   }
-  CFG.cats.forEach(function(cat){
-    if (!cat.productos || !cat.productos.length) return;
-    var h = document.createElement("h2");
-    h.className = "cat-titulo";
-    h.textContent = cat.nombre || "Menú";
-    cont.appendChild(h);
-
-    if (cat.img) {
-      var ban = document.createElement("img");
-      ban.className = "cat-banner"; ban.src = cat.img; ban.alt = cat.nombre || "";
-      ban.addEventListener("click", function(){ ampliar(cat.img); });
-      cont.appendChild(ban);
-    }
-
-    cat.productos.forEach(function(p){
+  if(!categorias.some(function(c){return c.id===categoriaActivaId;}))categoriaActivaId=categorias[0].id;
+  var carrusel=document.createElement("nav");carrusel.className="carrusel-cats";carrusel.setAttribute("aria-label","Categorías del menú");
+  categorias.forEach(function(cat){var b=document.createElement("button");b.className="cat-opcion"+(cat.id===categoriaActivaId?" activa":"");b.type="button";b.setAttribute("aria-pressed",cat.id===categoriaActivaId?"true":"false");if(cat.img){var img=document.createElement("img");img.src=cat.img;img.alt="";b.appendChild(img);}else{var icon=document.createElement("span");icon.className="cat-icono";icon.textContent=(cat.nombre||"M").trim().charAt(0).toUpperCase();b.appendChild(icon);}var nombre=document.createElement("span");nombre.textContent=cat.nombre||"Menú";b.appendChild(nombre);b.addEventListener("click",function(){categoriaActivaId=cat.id;pintarMenu();});carrusel.appendChild(b);});cont.appendChild(carrusel);
+  var cat=categorias.find(function(c){return c.id===categoriaActivaId;})||categorias[0];
+  var h = document.createElement("h2");h.className = "cat-titulo";h.textContent = cat.nombre || "Menú";cont.appendChild(h);
+  cat.productos.forEach(function(p){
       if (!p.nombre) return;
       var fila = document.createElement("div");
       fila.className = "item";
@@ -1113,8 +1118,11 @@ function pintarMenu(){
         mini.addEventListener("click", function(){ ampliar(p.img); });
         mini.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){e.preventDefault();ampliar(p.img);} });
         fila.appendChild(mini);
+      } else {
+        var sinFoto=document.createElement("div");sinFoto.className="item-sin-foto";sinFoto.textContent=p.nombre.trim().charAt(0).toUpperCase();fila.appendChild(sinFoto);
       }
 
+      var contenido=document.createElement("div");contenido.className="item-contenido";
       var txt = document.createElement("div");
       txt.className = "item-txt";
       var nom = document.createElement("div");
@@ -1125,7 +1133,7 @@ function pintarMenu(){
         det.className = "item-det"; det.textContent = p.detalle;
         txt.appendChild(det);
       }
-      fila.appendChild(txt);
+      contenido.appendChild(txt);
 
       var der = document.createElement("div");
       der.className = "item-der";
@@ -1140,10 +1148,10 @@ function pintarMenu(){
       } else {
         der.appendChild(control(p));
       }
-      fila.appendChild(der);
+      contenido.appendChild(der);fila.appendChild(contenido);
       cont.appendChild(fila);
-    });
   });
+  setTimeout(function(){var activa=cont.querySelector(".cat-opcion.activa");if(activa)activa.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});},0);
 }
 
 function ampliar(src){
@@ -1310,11 +1318,16 @@ function distanciaKm(a,b){
   var x=Math.sin(dLat/2)**2 + Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2;
   return 2*r*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-async function calcularEnvio(coord){
+async function direccionDesdeCoordenadas(coord){var r=await api("/api/reverse-geocode?lat="+encodeURIComponent(coord.lat)+"&lng="+encodeURIComponent(coord.lng));return r.displayName;}
+async function calcularEnvio(coord,direccion){
   var local = leerCoordenadas(CFG.coord);
   if (!local || !coord) { toast("No pudimos determinar la ubicación"); return; }
   var version=++calculoRutaVersion;
-  ubicacionEntrega = { lat:coord.lat, lng:coord.lng, km:distanciaKm(local,coord), tipo:"calculando" };
+  var distanciaDirecta=distanciaKm(local,coord);if(distanciaDirecta>25){ubicacionEntrega=null;$("#resultadoEnvio").textContent="";toast("La ubicación está fuera del radio de entrega de 25 km");return;}
+  var direccionExacta=direccion||coord.nombre||"";
+  if(!direccionExacta){$("#resultadoEnvio").textContent="Buscando la dirección del punto elegido…";try{direccionExacta=await direccionDesdeCoordenadas(coord);if(version!==calculoRutaVersion)return;}catch(e){if(version!==calculoRutaVersion)return;ubicacionEntrega=null;$("#resultadoEnvio").textContent="";toast(e.message);return;}}
+  ubicacionEntrega = { lat:coord.lat, lng:coord.lng, km:distanciaDirecta, tipo:"calculando" };
+  $("#p_dir").value=direccionExacta;
   $("#p_coord").value = coord.lat.toFixed(6) + ", " + coord.lng.toFixed(6);
   marcar("clienteMapa",coord,"Entrega"); if(mapas.clienteMapa) mapas.clienteMapa.setView([coord.lat,coord.lng],16);
   $("#resultadoEnvio").textContent = "Calculando recorrido por calles…";
@@ -1331,7 +1344,14 @@ function obtenerUbicacion(boton, listo){
   navigator.geolocation.getCurrentPosition(function(pos){ boton.disabled=false; boton.textContent=texto; listo({lat:pos.coords.latitude,lng:pos.coords.longitude}); }, function(){ boton.disabled=false; boton.textContent=texto; toast("No pudimos obtener tu ubicación. Revisá el permiso del navegador."); }, {enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 }
 $("#btnMiUbicacion").addEventListener("click", function(){ obtenerUbicacion(this,calcularEnvio); });
-$("#btnBuscarEntrega").addEventListener("click", async function(){ var b=this; try{b.disabled=true;b.textContent="Buscando…";calcularEnvio(await buscarDireccion($("#p_dir").value));}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Buscar dirección";} });
+$("#btnBuscarEntrega").addEventListener("click", async function(){ var b=this; try{b.disabled=true;b.textContent="Buscando…";calcularEnvio(await buscarDireccion($("#p_dir").value,{contexto:CFG.dir,cerca:leerCoordenadas(CFG.coord),pais:CFG.geoPais}));}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent="Buscar dirección";} });
+$("#p_dir").addEventListener("input",function(){
+  ubicacionEntrega=null;$("#resultadoEnvio").textContent="";pintarResumen();clearTimeout(esperaSugerencias);var texto=this.value.trim(),cerca=leerCoordenadas(CFG.coord),version=++versionSugerencias;
+  if(texto.length<3||!cerca){pintarSugerencias([]);return;}
+  esperaSugerencias=setTimeout(async function(){try{var r=await api("/api/address-suggestions?q="+encodeURIComponent(texto)+"&near="+encodeURIComponent(cerca.lat+","+cerca.lng));if(version===versionSugerencias)pintarSugerencias(r.suggestions||[]);}catch(e){if(version===versionSugerencias)pintarSugerencias([]);}},450);
+});
+function pintarSugerencias(items){var caja=$("#sugerenciasEntrega");caja.replaceChildren();if(!items.length){caja.classList.add("oculto");return;}items.forEach(function(item){var b=document.createElement("button");b.type="button";b.textContent=item.label;b.addEventListener("click",function(){$("#p_dir").value=item.label;pintarSugerencias([]);calcularEnvio({lat:item.lat,lng:item.lng},item.label);});caja.appendChild(b);});caja.classList.remove("oculto");}
+document.addEventListener("click",function(e){if(!e.target.closest(".campo-autocompletar"))pintarSugerencias([]);});
 function pintarResumen(){
   var cont = $("#resumenPedido");
   cont.innerHTML = "";

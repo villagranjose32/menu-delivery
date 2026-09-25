@@ -24,6 +24,8 @@ La sección de cadetes permite asignar entregas y compartir un seguimiento públ
 
 Para cambiar la contraseña del administrador, reiniciá el servidor con un nuevo valor de `ADMIN_PASSWORD`. Las sesiones anteriores del administrador se cerrarán.
 
+Para mostrar sugerencias de direcciones mientras el cliente escribe, creá una clave de Geoapify y configurá `GEOAPIFY_API_KEY`. Sin esa variable, continúa disponible la búsqueda manual con el botón **Buscar dirección**.
+
 ## Pruebas
 
 ```bash
