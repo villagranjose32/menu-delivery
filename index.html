@@ -352,6 +352,8 @@ textarea.entrada{min-height:66px;resize:vertical}
           <button class="btn" id="btnCopiar">Copiar</button>
           <button class="btn" id="btnCompartirWA">Enviar por WhatsApp</button>
         </div>
+        <label class="campo" style="margin-top:16px"><span>Número de mesa (opcional)</span><input class="entrada" id="f_mesa" inputmode="numeric" maxlength="6" pattern="[0-9]{1,6}" placeholder="Ej.: 12"></label>
+        <p class="ayuda">Dejalo vacío para un QR general. Si indicás una mesa, aparecerá en el cartel y se completará en el pedido al escanearlo.</p>
         <div id="qr"></div>
         <button class="btn btn-verde btn-chico" id="btnDescargarCartel" style="margin-top:12px">Descargar cartel con QR</button>
         <p class="ayuda" id="pesoLink"></p>
@@ -425,6 +427,8 @@ textarea.entrada{min-height:66px;resize:vertical}
         <p id="resultadoEnvio" class="ayuda" style="margin:10px 0 0"></p>
       </div>
     </div>
+
+    <label class="campo oculto" id="bloqueMesa"><span>Número de mesa (opcional)</span><input class="entrada" id="p_mesa" inputmode="numeric" maxlength="6" pattern="[0-9]{1,6}" placeholder="Ej.: 12"></label>
 
     <div id="bloqueRetiro" class="aviso oculto">Retirás por <b id="p_dirLocal"></b>.</div>
 
@@ -929,10 +933,28 @@ $("#btnAddCat").addEventListener("click", function(){
 });
 
 /* ---- compartir ---- */
+function numeroMesa(valor){
+  var mesa = String(valor || "").trim();
+  return /^[0-9]{1,6}$/.test(mesa) ? mesa : "";
+}
+var mesaDelQr = numeroMesa(new URLSearchParams(location.search).get("mesa"));
+$("#p_mesa").value = mesaDelQr;
 function armarLink(){
   tomarDatos();
-  return linkMenu();
+  var url = new URL(linkMenu());
+  var mesa = numeroMesa($("#f_mesa").value);
+  if (mesa) url.searchParams.set("mesa", mesa);
+  return url.href;
 }
+$("#f_mesa").addEventListener("input", function(){
+  this.value = this.value.replace(/[^0-9]/g, "").slice(0,6);
+  var url = armarLink();
+  $("#f_link").value = url;
+  pintarQR(url);
+});
+$("#p_mesa").addEventListener("input", function(){
+  this.value = this.value.replace(/[^0-9]/g, "").slice(0,6);
+});
 $("#btnGenerar").addEventListener("click", function(){
   if (!CFG.tel) { toast("Falta cargar el número de WhatsApp"); $("#f_tel").focus(); return; }
   guardarAhora().then(function(){
@@ -944,14 +966,14 @@ $("#btnGenerar").addEventListener("click", function(){
 });
 $("#btnCopiar").addEventListener("click", function(){
   var campo = $("#f_link");
-  if (!campo.value) campo.value = armarLink();
+  campo.value = armarLink();
   campo.select();
   if (navigator.clipboard) navigator.clipboard.writeText(campo.value).then(function(){ toast("Link copiado"); }, function(){ document.execCommand("copy"); toast("Link copiado"); });
   else { document.execCommand("copy"); toast("Link copiado"); }
 });
 $("#btnCompartirWA").addEventListener("click", function(){
   var campo = $("#f_link");
-  if (!campo.value) campo.value = armarLink();
+  campo.value = armarLink();
   var txt = "Mirá nuestro menú y hacé tu pedido acá: " + campo.value;
   window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank");
 });
@@ -961,6 +983,8 @@ function pintarQR(url){
   if (typeof QRCode === "undefined") { caja.style.display = "none"; return; }
   try {
     new QRCode(caja, { text:url, width:180, height:180, correctLevel: QRCode.CorrectLevel.L });
+    var mesa = numeroMesa(new URL(url).searchParams.get("mesa"));
+    if (mesa) { var etiqueta = document.createElement("p"); etiqueta.textContent = "Mesa " + mesa; etiqueta.style.cssText = "text-align:center;font-weight:800;margin:12px 0 0"; caja.appendChild(etiqueta); }
     caja.style.display = "block";
   } catch(e) {
     caja.style.display = "none";
@@ -993,15 +1017,18 @@ $("#btnDescargarCartel").addEventListener("click",async function(){
     if(!CFG.nombre||!CFG.dir){toast("Completá el nombre y la dirección del local");return;}
     if(!CFG.tel){toast("Falta el número de WhatsApp");return;}
     boton.disabled=true;boton.textContent="Preparando cartel…";await guardarAhora();
-    var url=armarLink(), qr=await crearQrGrande(url), canvas=document.createElement("canvas"); canvas.width=900;canvas.height=1250;
+    var url=armarLink(), mesa=numeroMesa(new URL(url).searchParams.get("mesa")), qr=await crearQrGrande(url), canvas=document.createElement("canvas"); canvas.width=900;canvas.height=1250;
     var ctx=canvas.getContext("2d");ctx.fillStyle="#fff9f0";ctx.fillRect(0,0,900,1250);ctx.textAlign="center";ctx.fillStyle="#23201c";
     ctx.font="800 62px Archivo, Arial, sans-serif";var y=100;y=textoEnLineas(ctx,CFG.nombre,450,y,760,70);
     if(CFG.lema){ctx.font="500 30px Karla, Arial, sans-serif";ctx.fillStyle="#6e6156";y=textoEnLineas(ctx,CFG.lema,450,y+25,720,38);}
     ctx.font="700 26px Karla, Arial, sans-serif";ctx.fillStyle="#1e5e4a";y=textoEnLineas(ctx,"📍 "+CFG.dir,450,y+30,720,34);
-    var qrY=Math.max(390,y+30);ctx.fillStyle="#fff";ctx.fillRect(130,qrY-20,640,640);ctx.drawImage(qr,150,qrY,600,600);
+    if(mesa){ctx.font="800 48px Archivo, Arial, sans-serif";ctx.fillStyle="#1e5e4a";ctx.fillText("MESA "+mesa,450,y+40);y+=75;}
+    var qrY=Math.max(390,y+30);
+    if(qrY+760>canvas.height){var cabecera=document.createElement("canvas");cabecera.width=canvas.width;cabecera.height=canvas.height;cabecera.getContext("2d").drawImage(canvas,0,0);canvas.height=qrY+760;ctx.fillStyle="#fff9f0";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(cabecera,0,0);ctx.textAlign="center";}
+    ctx.fillStyle="#fff";ctx.fillRect(130,qrY-20,640,640);ctx.drawImage(qr,150,qrY,600,600);
     ctx.fillStyle="#d93a22";ctx.font="800 34px Archivo, Arial, sans-serif";ctx.fillText("ESCANEÁ Y MIRÁ NUESTRO MENÚ",450,qrY+660);
     ctx.fillStyle="#6e6156";ctx.font="500 23px Karla, Arial, sans-serif";ctx.fillText("Elegí tus productos y enviá el pedido",450,qrY+705);
-    var a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=(usuario.slug||"menu")+"-qr.png";a.click();toast("Cartel descargado");
+    var a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=(usuario.slug||"menu")+(mesa?"-mesa-"+mesa:"")+"-qr.png";a.click();toast("Cartel descargado");
   }catch(e){toast(e.message);}finally{boton.disabled=false;boton.textContent="Descargar cartel con QR";}
 });
 
@@ -1270,14 +1297,17 @@ $("#telon").addEventListener("click", function(e){ if (e.target === $("#telon"))
 document.addEventListener("keydown", function(e){ if (e.key === "Escape") cerrarModal(); });
 
 function pintarOpciones(){
+  var anterior = elegido("entrega");
   var oe = $("#opcEntrega");
   oe.innerHTML = "";
   var modos = [];
   if (CFG.haceEnvio) modos.push({v:"envio", t:"Envío a domicilio"});
   if (CFG.haceRetiro) modos.push({v:"retiro", t:"Retiro por el local"});
   if (!modos.length) modos.push({v:"retiro", t:"Retiro por el local"});
+  modos.push({v:"local", t:"Comer en el local"});
+  var seleccion = anterior || (mesaDelQr ? "local" : modos[0].v);
   modos.forEach(function(m, i){
-    oe.appendChild(radio("entrega", m.v, m.t, i === 0));
+    oe.appendChild(radio("entrega", m.v, m.t, m.v === seleccion));
   });
   $("#bloqueEntrega").classList.toggle("oculto", modos.length < 2);
   oe.addEventListener("change", actualizarEntrega);
@@ -1311,7 +1341,8 @@ function actualizarEntrega(){
   var envio = e === "envio";
   $("#bloqueDireccion").classList.toggle("oculto", !envio);
   $("#calculadorEnvio").classList.toggle("oculto", !envio || !CFG.costoEnvioKm || !leerCoordenadas(CFG.coord));
-  $("#bloqueRetiro").classList.toggle("oculto", envio || !CFG.dir);
+  $("#bloqueRetiro").classList.toggle("oculto", e !== "retiro" || !CFG.dir);
+  $("#bloqueMesa").classList.toggle("oculto", e !== "local");
   $("#p_dirLocal").textContent = CFG.dir || "";
   pintarResumen();
 }
@@ -1438,6 +1469,10 @@ $("#btnEnviarWA").addEventListener("click", function(){
     }
     var ref = $("#p_ref").value.trim();
     if (ref) t.push("*Referencia:* " + ref);
+  } else if (entrega === "local") {
+    t.push("*Entrega:* comer en el local");
+    var mesa = numeroMesa($("#p_mesa").value);
+    if (mesa) t.push("*Mesa:* " + mesa);
   } else {
     t.push("*Entrega:* retira por el local" + (CFG.dir ? " (" + CFG.dir + ")" : ""));
   }
