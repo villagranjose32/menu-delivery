@@ -311,9 +311,14 @@ textarea.entrada{min-height:66px;resize:vertical}
 
     <section class="bloque panel-admin-seccion" id="panelPagos">
       <h2>Formas de pago</h2>
-      <p class="ayuda">Una por línea. El cliente elige una al cerrar el pedido.</p>
+      <p class="ayuda">Marcá las formas de pago que aceptás. El cliente podrá elegir entre las opciones habilitadas.</p>
       <div class="tarjeta">
-        <textarea class="entrada" id="f_pagos" placeholder="Efectivo&#10;Transferencia&#10;Tarjeta de débito"></textarea>
+        <div id="f_pagos" style="display:grid;gap:14px"></div>
+        <div class="fila" style="margin-top:20px">
+          <label class="campo"><span>Alias para transferencias</span><input class="entrada" id="f_aliasCuenta" maxlength="100" placeholder="Ej.: mi.local.mp"></label>
+          <label class="campo"><span>Nombre de la cuenta / titular</span><input class="entrada" id="f_nombreCuenta" maxlength="150" placeholder="Ej.: Juan Pérez"></label>
+        </div>
+        <p class="ayuda">Estos datos se muestran al cliente cuando elige Transferencia.</p>
       </div>
     </section>
 
@@ -429,6 +434,10 @@ textarea.entrada{min-height:66px;resize:vertical}
 
     <p style="font-size:.82rem;color:var(--ink-soft);margin:0 0 6px">Forma de pago</p>
     <div class="opciones" id="opcPago"></div>
+    <div class="aviso oculto" id="datosTransferencia">
+      <p id="aliasTransferencia"></p>
+      <p id="titularTransferencia"></p>
+    </div>
 
     <label class="campo oculto" id="bloqueVuelto"><span>¿Con cuánto abonás? (opcional)</span><input class="entrada" id="p_vuelto" inputmode="decimal" placeholder="10000"></label>
 
@@ -684,7 +693,9 @@ function mostrarAdmin(){
   $("#f_envioKm").value = CFG.costoEnvioKm || "";
   $("#f_haceEnvio").checked = !!CFG.haceEnvio;
   $("#f_haceRetiro").checked = !!CFG.haceRetiro;
-  $("#f_pagos").value = (CFG.pagos||[]).join("\n");
+  pintarPagosAdmin();
+  $("#f_aliasCuenta").value = CFG.aliasCuenta || "";
+  $("#f_nombreCuenta").value = CFG.nombreCuenta || "";
   pintarCats();
   medirLink();
   setTimeout(iniciarMapaAdmin, 0);
@@ -774,6 +785,21 @@ function pintarEntregasCadete(entregas){var caja=$("#entregasCadete");caja.repla
 var capaSeguimiento=null;
 async function cargarSeguimiento(id){try{var r=await api("/api/tracking?id="+encodeURIComponent(id)),d=r.delivery,c=r.courier;$("#segLocal").textContent=r.local;$("#segEstado").textContent="Estado: "+estadoReparto(d.status);$("#segDireccion").textContent="Destino: "+d.address;var centro=c&&c.lastLocation?c.lastLocation:d.coord,mapa=crearMapa("seguimientoMapa",centro,15);if(capaSeguimiento)capaSeguimiento.remove();capaSeguimiento=L.layerGroup().addTo(mapa);var puntos=[[d.coord.lat,d.coord.lng]];L.marker(puntos[0]).bindPopup("Destino").addTo(capaSeguimiento);if(c&&c.lastLocation){var actual=[c.lastLocation.lat,c.lastLocation.lng];puntos.push(actual);L.circleMarker(actual,{radius:10,color:"#1e5e4a",fillOpacity:1}).bindPopup("Cadete").addTo(capaSeguimiento);L.polyline(puntos,{color:"#d93a22",dashArray:"7 7"}).addTo(capaSeguimiento);mapa.fitBounds(puntos,{padding:[35,35]});}$("#segActualizado").textContent=c&&c.updatedAt?"Última ubicación: "+new Date(c.updatedAt).toLocaleString("es-AR"):"Esperando la ubicación del cadete.";if(d.status==="finished")clearInterval(relojSeguimiento);}catch(e){$("#segEstado").textContent=e.message;}}
 
+function pintarPagosAdmin(){
+  var cont = $("#f_pagos");
+  cont.replaceChildren();
+  var opciones = Array.from(new Set(["Efectivo", "Transferencia", "Tarjeta de débito", "Tarjeta de crédito"].concat(CFG.pagosOpciones || [], CFG.pagos || [])));
+  opciones.forEach(function(pago){
+    var label = document.createElement("label");
+    label.className = "check";
+    var input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = pago;
+    input.checked = (CFG.pagos || []).includes(pago);
+    label.append(input, document.createTextNode(pago));
+    cont.appendChild(label);
+  });
+}
 function tomarDatos(){
   CFG.nombre = $("#f_nombre").value.trim();
   var campoTel = $("#f_tel"), soloDigitos = campoTel.value.replace(/[^0-9]/g,"");
@@ -789,13 +815,16 @@ function tomarDatos(){
   CFG.costoEnvioKm = num($("#f_envioKm").value);
   CFG.haceEnvio = $("#f_haceEnvio").checked;
   CFG.haceRetiro = $("#f_haceRetiro").checked;
-  CFG.pagos = $("#f_pagos").value.split("\n").map(function(s){return s.trim();}).filter(Boolean);
+  CFG.pagos = $$("#f_pagos input:checked").map(function(input){return input.value;});
+  CFG.pagosOpciones = $$("#f_pagos input").map(function(input){return input.value;});
+  CFG.aliasCuenta = $("#f_aliasCuenta").value.trim();
+  CFG.nombreCuenta = $("#f_nombreCuenta").value.trim();
   if (!CFG.haceEnvio && !CFG.haceRetiro) { CFG.haceRetiro = true; $("#f_haceRetiro").checked = true; }
   guardarLocal();
   medirLink();
 }
 
-["#f_nombre","#f_tel","#f_lema","#f_dir","#f_coord","#f_moneda","#f_envio","#f_envioKm","#f_pagos","#f_haceEnvio","#f_haceRetiro"]
+["#f_nombre","#f_tel","#f_lema","#f_dir","#f_coord","#f_moneda","#f_envio","#f_envioKm","#f_pagos","#f_aliasCuenta","#f_nombreCuenta","#f_haceEnvio","#f_haceRetiro"]
   .forEach(function(s){ $(s).addEventListener("input", tomarDatos); $(s).addEventListener("change", tomarDatos); });
 
 function pintarCats(){
@@ -1260,7 +1289,8 @@ function pintarOpciones(){
 
   var op = $("#opcPago");
   op.innerHTML = "";
-  var pagos = (CFG.pagos && CFG.pagos.length) ? CFG.pagos : ["Efectivo"];
+  var pagos = Array.isArray(CFG.pagos) ? CFG.pagos : ["Efectivo"];
+  if (!pagos.length) op.textContent = "Forma de pago a confirmar con el local.";
   pagos.forEach(function(p, i){ op.appendChild(radio("pago", p, p, i === 0)); });
   op.addEventListener("change", actualizarPago);
   actualizarPago();
@@ -1294,6 +1324,9 @@ function actualizarEntrega(){
 function actualizarPago(){
   var p = (elegido("pago") || "").toLowerCase();
   $("#bloqueVuelto").classList.toggle("oculto", p.indexOf("efectivo") === -1);
+  $("#datosTransferencia").classList.toggle("oculto", p.indexOf("transferencia") === -1 || !(CFG.aliasCuenta || CFG.nombreCuenta));
+  $("#aliasTransferencia").textContent = CFG.aliasCuenta ? "Alias: " + CFG.aliasCuenta : "";
+  $("#titularTransferencia").textContent = CFG.nombreCuenta ? "Titular: " + CFG.nombreCuenta : "";
 }
 function costoEnvioActual(){
   if (elegido("entrega") !== "envio") return 0;
@@ -1422,6 +1455,10 @@ $("#btnEnviarWA").addEventListener("click", function(){
     t.push("*Entrega:* retira por el local" + (CFG.dir ? " (" + CFG.dir + ")" : ""));
   }
   t.push("*Pago:* " + pago);
+  if (pago.toLowerCase().indexOf("transferencia") !== -1) {
+    if (CFG.aliasCuenta) t.push("*Alias:* " + CFG.aliasCuenta);
+    if (CFG.nombreCuenta) t.push("*Titular:* " + CFG.nombreCuenta);
+  }
   var vuelto = num($("#p_vuelto").value);
   if (pago.toLowerCase().indexOf("efectivo") !== -1 && vuelto > 0) {
     t.push("Abona con " + plata(vuelto) + (vuelto > total ? " — vuelto " + plata(vuelto - total) : ""));

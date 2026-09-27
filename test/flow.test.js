@@ -40,9 +40,9 @@ test('registro, aprobación, menú público e imagen', async () => {
     const image = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]).toString('base64');
     r = await request('/api/upload', 'POST', { image }, owner); assert.equal(r.status, 201);
     const img = r.data.url;
-    const menu = { nombre: 'La Esquina', tel: '5491112345678', coord: '-27.7951, -64.2615', costoEnvio: 1000, costoEnvioKm: 500, cats: [{ id: 'cat1', nombre: 'Comidas', img: '', productos: [{ id: 'prod1', nombre: 'Pizza', precio: 1200, detalle: '', hay: true, img }] }] };
+    const menu = { pagos: ['Transferencia'], pagosOpciones: ['Efectivo', 'Transferencia'], aliasCuenta: 'mi.local.mp', nombreCuenta: 'Juan Pérez', nombre: 'La Esquina', tel: '5491112345678', coord: '-27.7951, -64.2615', costoEnvio: 1000, costoEnvioKm: 500, cats: [{ id: 'cat1', nombre: 'Comidas', img: '', productos: [{ id: 'prod1', nombre: 'Pizza', precio: 1200, detalle: '', hay: true, img }] }] };
     assert.equal((await request('/api/my-menu', 'PUT', menu, owner)).status, 200);
-    r = await request('/api/menu?slug=la-esquina'); assert.equal(r.data.menu.cats[0].productos[0].img, img); assert.equal(r.data.menu.costoEnvioKm, 500);
+    r = await request('/api/menu?slug=la-esquina'); assert.equal(r.data.menu.cats[0].productos[0].img, img); assert.equal(r.data.menu.costoEnvioKm, 500); assert.deepEqual(r.data.menu.pagos, ['Transferencia']); assert.deepEqual(r.data.menu.pagosOpciones, ['Efectivo', 'Transferencia']); assert.equal(r.data.menu.aliasCuenta, 'mi.local.mp'); assert.equal(r.data.menu.nombreCuenta, 'Juan Pérez');
     r = await request('/api/couriers', 'POST', { name: 'Juan' }, owner); assert.equal(r.status, 201); const courierToken = r.data.token; const courierId = r.data.courier.id;
     r = await request('/api/courier-login', 'POST', { slug: 'la-esquina', token: courierToken }); assert.equal(r.status, 200); const courierSession = r.data.session;
     assert.equal((await request('/api/courier-location', 'POST', { lat: -27.8, lng: -64.27 }, undefined, { 'X-Courier-Session': courierSession })).status, 200);
