@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Menú y pedidos por WhatsApp</title>
+<title>Menú interactivo</title>
+<meta property="og:title" content="Menú interactivo">
+<meta name="twitter:title" content="Menú interactivo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
@@ -357,13 +359,6 @@ textarea.entrada{min-height:66px;resize:vertical}
         <div id="qr"></div>
         <button class="btn btn-verde btn-chico" id="btnDescargarCartel" style="margin-top:12px">Descargar cartel con QR</button>
         <p class="ayuda" id="pesoLink"></p>
-        <p class="ayuda" style="margin:16px 0 0">El menú y las imágenes se guardan en el servidor. También podés descargar una copia de respaldo:</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="btn btn-chico" id="btnExportar">Descargar respaldo</button>
-          <button class="btn btn-chico" id="btnImportar">Cargar respaldo</button>
-          <input type="file" id="fileImportar" accept="application/json" class="oculto">
-          <button class="btn btn-chico" id="btnCargarDemo">Cargar menú de ejemplo</button>
-        </div>
       </div>
     </section>
   </main>
@@ -1030,56 +1025,6 @@ $("#btnDescargarCartel").addEventListener("click",async function(){
     ctx.fillStyle="#6e6156";ctx.font="500 23px Karla, Arial, sans-serif";ctx.fillText("Elegí tus productos y enviá el pedido",450,qrY+705);
     var a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=(usuario.slug||"menu")+(mesa?"-mesa-"+mesa:"")+"-qr.png";a.click();toast("Cartel descargado");
   }catch(e){toast(e.message);}finally{boton.disabled=false;boton.textContent="Descargar cartel con QR";}
-});
-
-$("#btnExportar").addEventListener("click", function(){
-  tomarDatos();
-  var blob = new Blob([JSON.stringify(CFG, null, 2)], {type:"application/json"});
-  var a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = (CFG.nombre ? CFG.nombre.replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").toLowerCase() : "menu") + ".json";
-  a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
-});
-$("#btnImportar").addEventListener("click", function(){ $("#fileImportar").click(); });
-$("#fileImportar").addEventListener("change", function(ev){
-  var f = ev.target.files[0]; if (!f) return;
-  var r = new FileReader();
-  r.onload = async function(){
-    try {
-      var nuevo = JSON.parse(r.result);
-      if (!nuevo || !Array.isArray(nuevo.cats)) throw new Error("Formato inválido");
-      await subirFotosDeRespaldo(nuevo);
-      CFG = Object.assign(CFG, nuevo);
-      await guardarAhora(); mostrarAdmin(); toast("Respaldo cargado");
-    } catch(e){ toast("No se pudo cargar el respaldo: " + e.message); }
-  };
-  r.readAsText(f);
-  ev.target.value = "";
-});
-$("#btnCargarDemo").addEventListener("click", function(){
-  if (CFG.cats.length && !confirm("Esto reemplaza lo que tenés cargado. ¿Seguimos?")) return;
-  CFG = Object.assign(CFG, {
-    nombre:"Rotisería La Esquina", lema:"Comida casera para llevar. Martes a domingo, de 19 a 00.",
-    dir:"Av. Belgrano 1240, Santiago del Estero", coord:"-27.7951, -64.2615",
-    moneda:"$", costoEnvio:1000, costoEnvioKm:500, haceEnvio:true, haceRetiro:true,
-    pagos:["Efectivo","Transferencia","Tarjeta de débito"],
-    cats:[
-      { id:id(), nombre:"Empanadas", productos:[
-        { id:id(), nombre:"Docena de carne", precio:9600, detalle:"Carne cortada a cuchillo, cebolla de verdeo, comino y huevo.", hay:true },
-        { id:id(), nombre:"Docena de pollo", precio:9200, detalle:"Pollo, morrón, cebolla y aceitunas.", hay:true }
-      ]},
-      { id:id(), nombre:"Milanesas", productos:[
-        { id:id(), nombre:"Napolitana con papas", precio:11500, detalle:"Ternera, jamón, queso, salsa y papas fritas.", hay:true },
-        { id:id(), nombre:"A caballo", precio:10800, detalle:"Ternera con dos huevos fritos y ensalada.", hay:true }
-      ]},
-      { id:id(), nombre:"Bebidas", productos:[
-        { id:id(), nombre:"Gaseosa 1,5 L", precio:3200, detalle:"Línea Coca-Cola, fría.", hay:true },
-        { id:id(), nombre:"Agua saborizada 1,5 L", precio:2600, detalle:"Pomelo o manzana.", hay:true }
-      ]}
-    ]
-  });
-  guardarLocal(); mostrarAdmin(); toast("Menú de ejemplo cargado");
 });
 
 $("#btnPrevia").addEventListener("click", function(){
